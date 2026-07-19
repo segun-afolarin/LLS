@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+/*
+  TAILWIND V4 NOTE
+  -----------------
+  v4 does not read custom colors/radii from tailwind.config.js the way
+  v3 did. Everything below is declared as CSS custom properties inside
+  @theme, which is what actually generates bg-primary, text-primary,
+  bg-surface-light, rounded-none-everywhere, etc.
+
+  You can delete tailwind.config.js entirely — it's not needed for this
+  setup. Content scanning is automatic via the @tailwindcss/vite plugin.
+*/
+
+@theme {
+  /* COLORS — flat tokens, so bg-primary / text-primary / border-primary
+     all become available, same for every other name below. */
+  --color-primary: #dd1b22;
+  --color-primary-dark: #a51419;
+
+  --color-surface-light: #f8f9fa;
+  --color-surface-dark: #111827;
+
+  --color-border: #e5e7eb;
+  --color-border-dark: #1f2937;
+
+  --color-text: #111827;
+  --color-text-muted: #6b7280;
+  --color-text-inverted: #f9fafb;
+
+  /* RADIUS — force every rounded-* utility to 0px, project-wide */
+  --radius-none: 0px;
+  --radius-sm: 0px;
+  --radius: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-full: 0px;
+
+  /* TYPOGRAPHY */
+  --font-display: "Inter", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* SHADOWS */
+  --shadow-subtle: 0 1px 2px 0 rgba(17, 24, 39, 0.04), 0 1px 3px 0 rgba(17, 24, 39, 0.06);
+  --shadow-card: 0 1px 3px 0 rgba(17, 24, 39, 0.06), 0 4px 12px -2px rgba(17, 24, 39, 0.05);
+  --shadow-elevated: 0 4px 16px -2px rgba(17, 24, 39, 0.08), 0 12px 32px -4px rgba(17, 24, 39, 0.08);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-surface-light text-text font-body antialiased;
+  }
+
+  ::selection {
+    @apply bg-primary/20 text-primary-dark;
+  }
+
+  * {
+    @apply border-border;
+  }
+}
+
+@layer components {
+  .card-surface {
+    @apply bg-white border border-border shadow-card;
+  }
+
+  .glass-header {
+    @apply bg-white/80 backdrop-blur-md border-b border-border;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white font-medium px-5 py-2.5 shadow-subtle
+           hover:bg-primary-dark transition-colors duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-text font-medium px-5 py-2.5 border border-border
+           hover:bg-surface-light transition-colors duration-200;
+  }
+
+  .input-field {
+    @apply w-full bg-white border border-border px-4 py-2.5 text-sm
+           placeholder:text-text-muted focus:outline-none focus:ring-2
+           focus:ring-primary/30 focus:border-primary transition-all duration-150;
+  }
+}

@@ -1,0 +1,217 @@
+import { useEffect, useRef, useState } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+import {
+  FiInbox,
+  FiClock,
+  FiCheckCircle,
+  FiAlertTriangle,
+  FiTrendingUp,
+  FiTrendingDown,
+} from "react-icons/fi";
+
+/*
+  FRONTEND-ONLY NOTE
+  -------------------
+  No backend yet. MOCK_STATS stands in for GET /api/admin/stats, scoped
+  server-side to this admin's assigned campus. These four metrics are
+  what an admin is actually measured on — different from the student
+  dashboard's engagement-focused stats, but built with the exact same
+  card language (DashboardStats) so the two dashboards read as one
+  product. `invert` marks stats where a falling number is the good
+  outcome (awaiting verification, overdue) — the trend arrow always
+  shows the real direction the number moved; `invert` only affects
+  whether that's colored as good (emerald) or bad (red) news.
+*/
+const MOCK_STATS = [
+  {
+    key: "awaiting",
+    label: "Awaiting Verification",
+    value: 14,
+    decimals: 0,
+    suffix: "",
+    trend: 8,
+    invert: true, // fewer awaiting is good — a rising number here is bad news
+    icon: <FiInbox />,
+    spark: [58, 62, 55, 68, 64, 74, 70, 78],
+  },
+  {
+    key: "avgTime",
+    label: "Avg. Resolution Time",
+    value: 2.4,
+    decimals: 1,
+    suffix: " days",
+    trend: -15,
+    invert: true, // a falling number (faster resolution) is good
+    icon: <FiClock />,
+    spark: [78, 72, 68, 62, 58, 52, 46, 40],
+  },
+  {
+    key: "resolvedWeek",
+    label: "Resolved This Week",
+    value: 22,
+    decimals: 0,
+    suffix: "",
+    trend: 18,
+    invert: false,
+    icon: <FiCheckCircle />,
+    spark: [40, 45, 42, 52, 58, 64, 70, 80],
+  },
+  {
+    key: "overdue",
+    label: "Overdue (48h+)",
+    value: 3,
+    decimals: 0,
+    suffix: "",
+    trend: -25,
+    invert: true, // fewer overdue is good
+    urgent: true,
+    icon: <FiAlertTriangle />,
+    spark: [70, 62, 68, 54, 58, 48, 42, 34],
+  },
+];
+
+// Counts a number up from 0 to its target once the tile scrolls into view.
+// Supports decimals (e.g. 2.4 days) via toFixed rather than a hard round.
+const useCountUp = (target, decimals, isInView, duration = 1100, skip = false) => {
+  const [value, setValue] = useState(skip ? target : 0);
+
+  useEffect(() => {
+    if (!isInView) return;
+    if (skip) {
+      setValue(target);
+      return;
+    }
+
+    let start = null;
+    let frame;
+
+    const step = (timestamp) => {
+      if (start === null) start = timestamp;
+      const progress = Math.min((timestamp - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const raw = eased * target;
+      setValue(decimals > 0 ? Number(raw.toFixed(decimals)) : Math.round(raw));
+      if (progress < 1) frame = requestAnimationFrame(step);
+    };
+
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [isInView, target, decimals, duration, skip]);
+
+  return value;
+};
+
+const Sparkline = ({ data, darkMode, isGood }) => {
+  const max = Math.max(...data);
+
+  return (
+    <div className="flex items-end gap-[3px] h-9 shrink-0" aria-hidden="true">
+      {data.map((v, i) => (
+        <motion.div
+          key={i}
+          initial={{ height: 0 }}
+          animate={{ height: `${(v / max) * 100}%` }}
+          transition={{ delay: 0.4 + i * 0.05, duration: 0.5, ease: "easeOut" }}
+          className={`w-[5px] ${
+            isGood ? "bg-primary/70" : darkMode ? "bg-gray-600" : "bg-gray-300"
+          } ${i === data.length - 1 ? "!bg-primary" : ""}`}
+        />
+      ))}
+    </div>
+  );
+};
+
+const StatCard = ({ stat, darkMode, index }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-60px" });
+  const shouldReduceMotion = useReducedMotion();
+  const count = useCountUp(stat.value, stat.decimals, isInView, 1100, shouldReduceMotion);
+
+  const trendUp = stat.trend >= 0;
+  const isGood = stat.invert ? !trendUp : trendUp;
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={shouldReduceMotion ? false : { opacity: 0, y: 24 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.5, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={shouldReduceMotion ? {} : { y: -4 }}
+      className={`
+        relative overflow-hidden border-t-2 border-primary p-5 sm:p-6 transition-colors duration-300
+        ${
+          darkMode
+            ? "bg-[#0A0A0C] border-x border-b border-x-white/10 border-b-white/10 hover:border-b-white/20"
+            : "bg-white border-x border-b border-x-gray-200 border-b-gray-200 hover:border-b-gray-300"
+        }
+        shadow-subtle hover:shadow-card
+      `}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div
+          className={`relative w-11 h-11 shrink-0 flex items-center justify-center text-lg ${
+            darkMode ? "bg-white/[0.05] text-white" : "bg-surface-light text-primary"
+          }`}
+        >
+          {stat.urgent && stat.value > 0 && (
+            <span className="absolute -top-1 -right-1 flex w-2.5 h-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping bg-primary/70" />
+              <span className="relative inline-flex h-2.5 w-2.5 bg-primary" />
+            </span>
+          )}
+          {stat.icon}
+        </div>
+
+        <div
+          className={`flex items-center gap-1 text-xs font-bold font-mono px-2 py-1 border shrink-0 ${
+            isGood
+              ? darkMode
+                ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-400"
+                : "bg-emerald-50 border-emerald-200 text-emerald-700"
+              : darkMode
+              ? "bg-primary/10 border-primary/25 text-red-300"
+              : "bg-red-50 border-red-200 text-primary-dark"
+          }`}
+        >
+          {trendUp ? <FiTrendingUp size={12} /> : <FiTrendingDown size={12} />}
+          {trendUp ? "+" : ""}
+          {stat.trend}%
+        </div>
+      </div>
+
+      <div className="mt-6 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h3
+            className={`font-mono text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums truncate ${
+              darkMode ? "text-white" : "text-gray-950"
+            }`}
+          >
+            {stat.decimals > 0 ? count.toFixed(stat.decimals) : count.toLocaleString()}
+            {stat.suffix}
+          </h3>
+          <p
+            className={`mt-1.5 text-[11px] sm:text-[12px] font-medium uppercase tracking-[0.08em] ${
+              darkMode ? "text-gray-400" : "text-gray-500"
+            }`}
+          >
+            {stat.label}
+          </p>
+        </div>
+
+        <Sparkline data={stat.spark} darkMode={darkMode} isGood={isGood} />
+      </div>
+    </motion.div>
+  );
+};
+
+const AdminStats = ({ darkMode }) => {
+  return (
+    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      {MOCK_STATS.map((stat, index) => (
+        <StatCard key={stat.key} stat={stat} darkMode={darkMode} index={index} />
+      ))}
+    </section>
+  );
+};
+
+export default AdminStats;

@@ -183,7 +183,7 @@ const Logout = () => {
             <div className="mt-8 flex flex-col-reverse sm:flex-row gap-3">
               <button
                 onClick={handleCancel}
-                className={`flex-1 h-12 font-bold text-[13.5px] border transition-colors duration-200 ${
+                className={`flex-1 h-12 flex items-center justify-center whitespace-nowrap font-bold text-[13.5px] border transition-colors duration-200 ${
                   darkMode ? "border-white/10 text-gray-200 hover:bg-white/[0.05]" : "border-gray-200 text-gray-700 hover:bg-surface-light"
                 }`}
               >
@@ -191,7 +191,7 @@ const Logout = () => {
               </button>
               <button
                 onClick={handleConfirm}
-                className="group relative overflow-hidden flex-1 h-12 bg-primary text-white font-bold text-[13.5px] hover:bg-primary-dark transition-colors duration-200 flex items-center justify-center gap-2"
+                className="group relative overflow-hidden flex-1 h-12 bg-primary text-white font-bold text-[13.5px] hover:bg-primary-dark transition-colors duration-200 flex items-center justify-center gap-2 whitespace-nowrap"
               >
                 <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-all duration-1000" />
                 <FiLogOut size={14} />

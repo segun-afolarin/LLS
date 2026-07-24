@@ -34,7 +34,7 @@ const FeedFilters = ({ darkMode, activeCategory, setActiveCategory, activeSort, 
         {/* SEARCH + SORT ROW */}
         <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
           <div
-            className={`flex-1 flex items-center gap-3 h-12 sm:h-10 px-4 sm:px-3.5 border transition-colors duration-150 ${
+            className={`flex-1 flex items-center gap-3 h-14 sm:h-11 px-4 sm:px-3.5 border transition-colors duration-150 ${
               darkMode ? "bg-white/[0.03] border-white/10 focus-within:border-primary/40" : "bg-white border-gray-200 focus-within:border-primary/40"
             }`}
           >
@@ -60,7 +60,7 @@ const FeedFilters = ({ darkMode, activeCategory, setActiveCategory, activeSort, 
             <select
               value={activeSort}
               onChange={(e) => setActiveSort(e.target.value)}
-              className={`w-full sm:w-auto h-12 sm:h-10 pl-4 sm:pl-3.5 pr-9 border text-base sm:text-[13px] font-semibold outline-none appearance-none ${
+              className={`w-full sm:w-auto h-14 sm:h-11 pl-4 sm:pl-3.5 pr-9 border text-base sm:text-[13px] font-semibold outline-none appearance-none ${
                 darkMode ? "bg-white/[0.03] border-white/10 text-gray-200" : "bg-white border-gray-200 text-gray-700"
               }`}
             >

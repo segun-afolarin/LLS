@@ -158,6 +158,7 @@ const ReportIssueForm = ({ darkMode }) => {
     const files = Array.from(e.target.files || []).slice(0, 4 - form.images.length);
     const newImages = files.map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
     setForm((prev) => ({ ...prev, images: [...prev.images, ...newImages] }));
+    setErrors((prev) => ({ ...prev, images: null }));
     e.target.value = "";
   };
 
@@ -185,6 +186,10 @@ const ReportIssueForm = ({ darkMode }) => {
       if (!form.semester) newErrors.semester = "Select which semester you're currently in.";
     }
 
+    if (targetStep === 2 && form.images.length === 0) {
+      newErrors.images = "At least one photo is required to continue.";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -197,6 +202,10 @@ const ReportIssueForm = ({ darkMode }) => {
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
 
   const handleSubmit = async () => {
+    if (!validateStep(2)) {
+      setStep(2);
+      return;
+    }
     setSubmitting(true);
     // Simulated network delay — replace with a real POST once backend exists.
     await new Promise((resolve) => setTimeout(resolve, 1200));
@@ -467,7 +476,7 @@ const ReportIssueForm = ({ darkMode }) => {
                 Add photo evidence
               </h3>
               <p className={`text-[12.5px] mb-6 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                Optional, but reports with photos get confirmed faster. Up to 4 images.
+                Required. At least one photo helps other students confirm your report faster. Up to 4 images.
               </p>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -488,7 +497,11 @@ const ReportIssueForm = ({ darkMode }) => {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     className={`aspect-square border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors duration-200 ${
-                      darkMode ? "border-white/15 text-gray-500 hover:border-primary/40 hover:text-primary" : "border-gray-200 text-gray-400 hover:border-primary/40 hover:text-primary"
+                      errors.images
+                        ? "border-primary text-primary"
+                        : darkMode
+                        ? "border-white/15 text-gray-500 hover:border-primary/40 hover:text-primary"
+                        : "border-gray-200 text-gray-400 hover:border-primary/40 hover:text-primary"
                     }`}
                   >
                     <FiUpload size={18} />
@@ -496,6 +509,8 @@ const ReportIssueForm = ({ darkMode }) => {
                   </button>
                 )}
               </div>
+
+              {errors.images && <p className="mt-3 text-[12px] font-semibold text-primary">{errors.images}</p>}
 
               <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
             </motion.div>

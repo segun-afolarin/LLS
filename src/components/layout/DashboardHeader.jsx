@@ -231,12 +231,90 @@ const NotificationPanel = ({ darkMode, notifications, onClose, onMarkAllRead, on
   );
 };
 
+const ProfileInfoRow = ({ label, value, darkMode }) => (
+  <div className="flex items-center justify-between gap-4 py-2.5">
+    <span className={`text-[10px] font-bold uppercase tracking-[0.12em] shrink-0 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+      {label}
+    </span>
+    <span className={`text-[12.5px] font-semibold text-right truncate ${darkMode ? "text-gray-100" : "text-gray-900"}`}>
+      {value}
+    </span>
+  </div>
+);
+
+const ProfileCard = ({ darkMode, user, initials, avatarUrl, imgError, onImgError, onClose }) => (
+  <motion.div
+    initial={{ opacity: 0, y: -12, scaleY: 0.95 }}
+    animate={{ opacity: 1, y: 0, scaleY: 1 }}
+    exit={{ opacity: 0, y: -12, scaleY: 0.95 }}
+    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+    style={{ transformOrigin: "top right" }}
+    className={`
+      fixed left-2.5 right-2.5 top-[78px]
+      sm:absolute sm:left-auto sm:right-0 sm:top-[calc(100%+10px)]
+      z-50 w-auto sm:w-[320px]
+      border overflow-hidden
+      ${darkMode ? "bg-[#0C0D10] border-white/[0.09] shadow-[0_24px_80px_rgba(0,0,0,0.7)]" : "bg-white border-gray-200 shadow-elevated"}
+    `}
+  >
+    <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-primary to-transparent" />
+
+    <div className="px-5 pt-5 pb-4 flex items-center gap-3.5">
+      <div className="relative w-14 h-14 shrink-0 overflow-hidden">
+        {avatarUrl && !imgError ? (
+          <img src={avatarUrl} alt={user.name} className="w-full h-full object-cover" onError={onImgError} />
+        ) : (
+          <div className="w-full h-full bg-primary flex items-center justify-center">
+            <span className="text-[15px] font-black tracking-tight text-white">{initials}</span>
+          </div>
+        )}
+      </div>
+      <div className="min-w-0">
+        <h4 className={`text-[14.5px] font-black tracking-tight leading-snug truncate ${darkMode ? "text-white" : "text-gray-950"}`}>
+          {user.name}
+        </h4>
+        <span className={`inline-flex mt-1.5 px-2 py-0.5 border text-[9.5px] font-black uppercase tracking-wide ${darkMode ? "bg-white/[0.05] border-white/10 text-gray-300" : "bg-surface-light border-gray-200 text-gray-600"}`}>
+          {user.role}
+        </span>
+      </div>
+    </div>
+
+    <div className={`mx-5 h-px ${darkMode ? "bg-white/[0.07]" : "bg-gray-100"}`} />
+
+    <div className="px-5 py-1 divide-y divide-inherit">
+      <ProfileInfoRow label="Student ID" value={user.studentId} darkMode={darkMode} />
+      <ProfileInfoRow label="Course" value={user.course} darkMode={darkMode} />
+      <ProfileInfoRow label="Campus" value={user.campus} darkMode={darkMode} />
+      <ProfileInfoRow label="Semester" value={user.semester} darkMode={darkMode} />
+      <ProfileInfoRow label="Phone" value={user.phone} darkMode={darkMode} />
+    </div>
+
+    <div className={`px-5 py-3.5 border-t ${darkMode ? "border-white/[0.07] bg-white/[0.02]" : "border-gray-100 bg-gray-50/60"}`}>
+      <button
+        onClick={onClose}
+        className={`w-full text-center text-[11px] font-bold uppercase tracking-wide py-1.5 transition-colors duration-150 ${darkMode ? "text-red-400 hover:text-red-300" : "text-primary hover:text-primary-dark"}`}
+      >
+        View full profile
+      </button>
+    </div>
+  </motion.div>
+);
+
 /* ─────────────────────────────────────────────────────
    LLS DASHBOARD HEADER (frontend-only — no backend yet)
 ───────────────────────────────────────────────────── */
 const DashboardHeader = ({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen, mobileSidebar, setMobileSidebar }) => {
   // Placeholder "user" until auth/backend exists. Swap for useAuth() later.
-  const user = { name: "Afolarin Oluwasegun", role: "Student", avatar: null };
+  const user = {
+    name: "Afolarin Oluwasegun",
+    role: "Student",
+    avatar: null,
+    studentId: "0102234014",
+    course: "B.Sc. Computer Science",
+    campus: "Abuja",
+    semester: "200 Level — 3rd Semester",
+    phone: "+234 803 123 4567",
+  };
 
   const rawName   = user?.name?.trim() ?? "";
   const parts     = rawName ? rawName.split(" ") : [];
@@ -256,6 +334,10 @@ const DashboardHeader = ({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen, m
   const bellRef  = useRef(null);
   const panelRef = useRef(null);
 
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileTriggerRef = useRef(null);
+  const profileCardRef = useRef(null);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
@@ -263,24 +345,33 @@ const DashboardHeader = ({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen, m
       if (panelRef.current && !panelRef.current.contains(e.target) &&
           bellRef.current  && !bellRef.current.contains(e.target))
         setPanelOpen(false);
+
+      if (profileCardRef.current && !profileCardRef.current.contains(e.target) &&
+          profileTriggerRef.current && !profileTriggerRef.current.contains(e.target))
+        setProfileOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   useEffect(() => {
-    const handler = (e) => { if (e.key === "Escape") setPanelOpen(false); };
+    const handler = (e) => {
+      if (e.key === "Escape") {
+        setPanelOpen(false);
+        setProfileOpen(false);
+      }
+    };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
   useEffect(() => {
-    if (panelOpen && window.innerWidth < 640) {
+    if ((panelOpen || profileOpen) && window.innerWidth < 640) {
       const prev = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       return () => { document.body.style.overflow = prev; };
     }
-  }, [panelOpen]);
+  }, [panelOpen, profileOpen]);
 
   // ── Local-only handlers. Replace bodies with api calls once backend exists ──
   const handleMarkAllRead = () => {
@@ -299,6 +390,11 @@ const DashboardHeader = ({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen, m
     if (window.innerWidth < 1280) setMobileSidebar(!mobileSidebar);
     else setSidebarOpen(!sidebarOpen);
   };
+
+  // Whether the menu button should show its "toggled" state — mobile drawer
+  // open, or desktop sidebar collapsed. Gives the button a visible click
+  // response instead of looking identical before and after the click.
+  const menuButtonActive = mobileSidebar || !sidebarOpen;
 
   // ── Scroll-aware elevation — header gains depth once the page scrolls,
   // instead of sitting on a flat colored line all the time. ──────────────
@@ -340,10 +436,12 @@ const DashboardHeader = ({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen, m
           <motion.button
             whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.95 }}
             onClick={handleSidebarToggle}
+            aria-pressed={menuButtonActive}
+            aria-label={mobileSidebar ? "Close menu" : sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
             className={`relative w-11 h-11 flex items-center justify-center text-lg border transition-all duration-300 ${darkMode ? "bg-white/[0.04] border-white/10 text-white hover:bg-white/[0.08]" : "bg-[#F7F7F7] border-gray-200 text-black hover:bg-white"}`}
           >
             <AnimatePresence mode="wait" initial={false}>
-              {mobileSidebar ? (
+              {menuButtonActive ? (
                 <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.18 }}><FiX /></motion.span>
               ) : (
                 <motion.span key="menu" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.18 }}><FiMenu /></motion.span>
@@ -392,7 +490,7 @@ const DashboardHeader = ({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen, m
           <div className="relative">
             <motion.button
               ref={bellRef} whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }}
-              onClick={() => setPanelOpen((v) => !v)}
+              onClick={() => { setPanelOpen((v) => !v); setProfileOpen(false); }}
               aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
               className={`relative w-11 h-11 flex items-center justify-center text-lg border transition-all duration-300 ${darkMode ? `bg-white/[0.03] border-white/10 text-white hover:bg-white/[0.06] ${panelOpen ? "bg-white/[0.06]" : ""}` : `bg-[#F7F7F7] border-gray-200 text-black hover:bg-white ${panelOpen ? "bg-white" : ""}`}`}
             >
@@ -443,21 +541,47 @@ const DashboardHeader = ({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen, m
             </AnimatePresence>
           </motion.button>
 
-          <motion.div whileHover={{ y: -2 }} className="flex items-center gap-3 pl-1 sm:pl-2 cursor-pointer">
-            <div className="relative w-11 h-11 overflow-hidden">
-              {avatarUrl && !imgError ? (
-                <img src={avatarUrl} alt={user?.name || "Profile"} className="w-full h-full object-cover" onError={() => setImgError(true)} />
-              ) : (
-                <div className="w-full h-full bg-primary flex items-center justify-center">
-                  <span className="text-[13px] font-black tracking-tight text-white">{initials}</span>
-                </div>
-              )}
+          <div className="relative">
+            <motion.button
+              ref={profileTriggerRef}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => { setProfileOpen((v) => !v); setPanelOpen(false); }}
+              aria-label="View profile"
+              aria-expanded={profileOpen}
+              className="flex items-center gap-3 pl-1 sm:pl-2 cursor-pointer"
+            >
+              <div className="relative w-11 h-11 overflow-hidden">
+                {avatarUrl && !imgError ? (
+                  <img src={avatarUrl} alt={user?.name || "Profile"} className="w-full h-full object-cover" onError={() => setImgError(true)} />
+                ) : (
+                  <div className="w-full h-full bg-primary flex items-center justify-center">
+                    <span className="text-[13px] font-black tracking-tight text-white">{initials}</span>
+                  </div>
+                )}
+              </div>
+              <div className="hidden lg:block text-left">
+                <h3 className={`text-sm font-semibold leading-none ${darkMode ? "text-white" : "text-black"}`}>{firstName}</h3>
+                <p className={`text-xs mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{role}</p>
+              </div>
+            </motion.button>
+
+            <div ref={profileCardRef}>
+              <AnimatePresence>
+                {profileOpen && (
+                  <ProfileCard
+                    darkMode={darkMode}
+                    user={user}
+                    initials={initials}
+                    avatarUrl={avatarUrl}
+                    imgError={imgError}
+                    onImgError={() => setImgError(true)}
+                    onClose={() => setProfileOpen(false)}
+                  />
+                )}
+              </AnimatePresence>
             </div>
-            <div className="hidden lg:block">
-              <h3 className={`text-sm font-semibold leading-none ${darkMode ? "text-white" : "text-black"}`}>{firstName}</h3>
-              <p className={`text-xs mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{role}</p>
-            </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </motion.header>

@@ -22,7 +22,8 @@ import LogoutConfirmModal from "../layout/LogoutConfirmModal";
   assigned campus (from context, once auth exists). Unlike the student
   sidebar, this campus label is load-bearing information — it's the
   one thing that reminds an admin their view is scoped to a single
-  campus, never university-wide.
+  campus, never university-wide. It now lives under the wordmark so the
+  header still matches the student sidebar's structure exactly.
 */
 const CURRENT_CAMPUS = "Abuja";
 
@@ -45,6 +46,7 @@ const AdminSidebar = ({ sidebarOpen, mobileSidebar, setMobileSidebar, darkMode }
 
   return (
     <>
+      {/* MOBILE OVERLAY */}
       <AnimatePresence>
         {mobileSidebar && (
           <motion.div
@@ -58,6 +60,7 @@ const AdminSidebar = ({ sidebarOpen, mobileSidebar, setMobileSidebar, darkMode }
         )}
       </AnimatePresence>
 
+      {/* SIDEBAR */}
       <motion.aside
         initial={false}
         animate={{
@@ -75,40 +78,57 @@ const AdminSidebar = ({ sidebarOpen, mobileSidebar, setMobileSidebar, darkMode }
           ${darkMode ? "bg-[#0A0A0C]/98 border-white/10" : "bg-white border-gray-200"}
         `}
       >
+        {/* BACKGROUND — hairline grid, restrained, no glow-soup */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div
             className="absolute inset-0 opacity-[0.025]"
             style={{
-              backgroundImage: "linear-gradient(to right, #DD1B22 1px, transparent 1px), linear-gradient(to bottom, #DD1B22 1px, transparent 1px)",
+              backgroundImage:
+                "linear-gradient(to right, #C1121F 1px, transparent 1px), linear-gradient(to bottom, #C1121F 1px, transparent 1px)",
               backgroundSize: "56px 56px",
             }}
           />
         </div>
 
+        {/* TOP ACCENT STRIP */}
         <div className="h-[3px] w-full bg-primary" />
 
+        {/* CONTENT */}
         <div className="relative z-10 h-full overflow-y-auto overscroll-contain flex flex-col">
-          {/* HEADER — wordmark + role/campus badge (load-bearing, unlike student's bare wordmark) */}
-          <div className={`px-4 py-5 border-b ${darkMode ? "border-white/10" : "border-gray-200"}`}>
-            <div className={`flex items-center ${sidebarOpen || isMobile ? "gap-3" : "justify-center"}`}>
-              <div className="w-11 h-11 shrink-0 bg-primary flex items-center justify-center">
-                <span className="text-white text-[15px] font-black tracking-tight">LLS</span>
-              </div>
-
-              <AnimatePresence mode="wait">
-                {(sidebarOpen || isMobile) && (
-                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.25 }}>
-                    <p className={`text-[14px] font-black tracking-tight leading-none ${darkMode ? "text-white" : "text-gray-950"}`}>Admin Console</p>
-                    <div className="flex items-center gap-1.5 mt-2">
-                      <span className="w-1.5 h-1.5 bg-primary" />
-                      <p className={`text-[10.5px] font-bold tracking-[0.14em] uppercase ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        {CURRENT_CAMPUS} Campus
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+          {/* HEADER — wordmark, exact match to student sidebar; campus badge sits below it, expanded-only */}
+          <div className={`px-4 py-6 border-b ${darkMode ? "border-white/10" : "border-gray-200"}`}>
+            <AnimatePresence mode="wait">
+              {sidebarOpen || isMobile ? (
+                <motion.div
+                  key="full"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <h1 className="text-[36px] font-black tracking-tight leading-none text-primary">
+                    LLS
+                  </h1>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <span className="w-1.5 h-1.5 bg-primary" />
+                    <p className={`text-[10.5px] font-bold tracking-[0.14em] uppercase ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      {CURRENT_CAMPUS} Campus
+                    </p>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="collapsed"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="w-11 h-11 mx-auto bg-primary flex items-center justify-center"
+                >
+                  <span className="text-white text-[15px] font-black tracking-tight">LLS</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* NAVIGATION */}
@@ -136,13 +156,16 @@ const AdminSidebar = ({ sidebarOpen, mobileSidebar, setMobileSidebar, darkMode }
                     whileHover={{ x: sidebarOpen || isMobile ? 4 : 0 }}
                     whileTap={{ scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 260, damping: 18 }}
-                    className={`group relative h-[52px] transition-all duration-200 overflow-hidden ${
-                      isActive
-                        ? "bg-primary text-white"
-                        : darkMode
-                        ? "text-gray-300 hover:bg-white/[0.05] hover:text-white"
-                        : "text-gray-600 hover:bg-[#F8F9FA] hover:text-gray-950"
-                    }`}
+                    className={`
+                      group relative h-[54px] transition-all duration-200 overflow-hidden
+                      ${
+                        isActive
+                          ? "bg-primary text-white"
+                          : darkMode
+                          ? "text-gray-300 hover:bg-white/[0.05] hover:text-white"
+                          : "text-gray-600 hover:bg-[#F8F9FA] hover:text-gray-950"
+                      }
+                    `}
                   >
                     <Link
                       to={item.path}
@@ -150,15 +173,22 @@ const AdminSidebar = ({ sidebarOpen, mobileSidebar, setMobileSidebar, darkMode }
                       className="flex items-center justify-between w-full h-full"
                     >
                       {isActive && (
-                        <motion.div
-                          layoutId="activeAdminSidebar"
-                          transition={{ type: "spring", stiffness: 280, damping: 22 }}
-                          className="absolute left-0 top-0 bottom-0 w-[3px] bg-white"
-                        />
+                        <>
+                          <motion.div
+                            layoutId="activeAdminSidebar"
+                            transition={{ type: "spring", stiffness: 280, damping: 22 }}
+                            className="absolute left-0 top-0 bottom-0 w-[3px] bg-white"
+                          />
+                          <motion.div
+                            layoutId="activeAdminSidebarRight"
+                            transition={{ type: "spring", stiffness: 280, damping: 22 }}
+                            className="absolute right-0 top-0 bottom-0 w-[3px] bg-white"
+                          />
+                        </>
                       )}
 
                       <div className={`relative z-10 flex items-center ${sidebarOpen || isMobile ? "gap-4 px-4" : "justify-center w-full"}`}>
-                        <div className="text-[18px] shrink-0">{item.icon}</div>
+                        <div className="text-[19px] shrink-0">{item.icon}</div>
                         <AnimatePresence mode="wait">
                           {(sidebarOpen || isMobile) && (
                             <motion.span
@@ -166,7 +196,7 @@ const AdminSidebar = ({ sidebarOpen, mobileSidebar, setMobileSidebar, darkMode }
                               animate={{ opacity: 1, x: 0 }}
                               exit={{ opacity: 0, x: -10 }}
                               transition={{ duration: 0.2 }}
-                              className="text-[13.5px] font-semibold whitespace-nowrap"
+                              className="text-sm font-semibold whitespace-nowrap"
                             >
                               {item.title}
                             </motion.span>
@@ -206,18 +236,37 @@ const AdminSidebar = ({ sidebarOpen, mobileSidebar, setMobileSidebar, darkMode }
             <Link
               to="/admin/settings"
               onClick={() => window.innerWidth < 1280 && setMobileSidebar(false)}
-              className={`group relative h-[52px] flex items-center transition-all duration-200 overflow-hidden ${
-                location.pathname === "/admin/settings"
-                  ? "bg-primary text-white"
-                  : darkMode
-                  ? "text-gray-300 hover:bg-white/[0.05] hover:text-white"
-                  : "text-gray-600 hover:bg-[#F8F9FA] hover:text-gray-950"
-              } ${sidebarOpen || isMobile ? "gap-4 px-4" : "justify-center"}`}
+              className={`
+                group relative h-[54px] flex items-center transition-all duration-200 overflow-hidden
+                ${
+                  location.pathname === "/admin/settings"
+                    ? "bg-primary text-white"
+                    : darkMode
+                    ? "text-gray-300 hover:bg-white/[0.05] hover:text-white"
+                    : "text-gray-600 hover:bg-[#F8F9FA] hover:text-gray-950"
+                }
+                ${sidebarOpen || isMobile ? "gap-4 px-4" : "justify-center"}
+              `}
             >
-              <FiSettings className="text-[18px] relative z-10" />
+              {location.pathname === "/admin/settings" && (
+                <>
+                  <motion.div
+                    layoutId="activeAdminSidebar"
+                    transition={{ type: "spring", stiffness: 280, damping: 22 }}
+                    className="absolute left-0 top-0 bottom-0 w-[3px] bg-white"
+                  />
+                  <motion.div
+                    layoutId="activeAdminSidebarRight"
+                    transition={{ type: "spring", stiffness: 280, damping: 22 }}
+                    className="absolute right-0 top-0 bottom-0 w-[3px] bg-white"
+                  />
+                </>
+              )}
+
+              <FiSettings className="text-[19px] relative z-10" />
               <AnimatePresence mode="wait">
                 {(sidebarOpen || isMobile) && (
-                  <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="relative z-10 text-[13.5px] font-semibold">
+                  <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="relative z-10 text-sm font-semibold">
                     Settings
                   </motion.span>
                 )}
@@ -226,14 +275,14 @@ const AdminSidebar = ({ sidebarOpen, mobileSidebar, setMobileSidebar, darkMode }
 
             <button
               onClick={() => setLogoutModalOpen(true)}
-              className={`group relative h-[52px] flex items-center w-full transition-all duration-200 overflow-hidden text-primary hover:bg-primary/[0.06] ${
+              className={`group relative h-[54px] flex items-center w-full transition-all duration-200 overflow-hidden text-primary hover:bg-primary/[0.06] ${
                 sidebarOpen || isMobile ? "gap-4 px-4" : "justify-center"
               }`}
             >
-              <FiLogOut className="text-[18px] relative z-10" />
+              <FiLogOut className="text-[19px] relative z-10" />
               <AnimatePresence mode="wait">
                 {(sidebarOpen || isMobile) && (
-                  <motion.span initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.2 }} className="relative z-10 text-[13.5px] font-semibold whitespace-nowrap">
+                  <motion.span initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.2 }} className="relative z-10 text-sm font-semibold whitespace-nowrap">
                     Logout
                   </motion.span>
                 )}

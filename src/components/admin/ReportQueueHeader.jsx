@@ -2,70 +2,69 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
+  FiInbox,
   FiArrowRight,
-  FiAlertTriangle,
   FiZap,
   FiFileText,
   FiCheckCircle,
   FiClock,
-  FiInbox,
+  FiAlertTriangle,
+  FiTag,
 } from "react-icons/fi";
 
 /*
   FRONTEND-ONLY NOTE
   -------------------
-  No backend yet. MOCK_ADMIN and MOCK_URGENT stand in for useAuth() and
-  a real GET /api/admin/overview call. urgentCount drives whether the
-  side panel shows an alert or an all-clear state — an admin with zero
-  overdue reports shouldn't see an alert manufactured to fill space.
-  ADMIN_STATS mirrors the mock numbers used on the student dashboard
-  hero (342 filed, 261 resolved) scoped down to admin-relevant figures
-  — swap for a real GET /api/admin/stats once that endpoint exists.
+  No backend yet. SUMMARY and QUEUE_SNAPSHOT stand in for a real
+  aggregate derived from GET /api/admin/report-queue. Once wired up,
+  compute these from the same fetched list ReportQueueTable uses
+  instead of hardcoding them. hasUrgent drives whether the side panel
+  shows an alert stamp or an all-clear one — same "don't manufacture
+  urgency" rule as AdminDashboardHero.
 */
-const MOCK_ADMIN = { name: "Afolarin", campus: "Abuja" };
-const MOCK_URGENT = { count: 3, oldestHours: 52 };
+const SUMMARY = { total: 14, urgent: 3, avgWaitHours: 19 };
 
-const ADMIN_STATS = {
-  pending: 11,
-  resolvedThisWeek: 24,
-  avgResponseHrs: 18,
+const QUEUE_SNAPSHOT = {
+  oldestWaitHours: 52,
+  topCategory: "Portal/ICT",
 };
 
 const heroContent = [
   {
-    title1: "Welcome Back,",
-    title2: "Administrator.",
+    title1: "Fourteen Reports,",
+    title2: "Waiting on You.",
     paragraph:
-      "Every report waiting below represents a student who trusted the system enough to speak up. What you do next is where that trust gets repaid.",
+      "Every entry here already passed community confirmation real students vouched for it. Your review is the last step before it's actually fixed.",
   },
   {
-    title1: "Small Actions,",
-    title2: "Real Impact.",
+    title1: "Verify Fast,",
+    title2: "Verify Well.",
     paragraph:
-      "A verified report today is a fixed hostel light, a safer walkway, a working portal tomorrow. Your review is the turning point, not a formality.",
+      "Speed matters, but so does getting it right. A quick glance at the evidence and confirmers below is usually all it takes to move with confidence.",
   },
   {
-    title1: "You Keep",
-    title2: "This Honest.",
+    title1: "Three Are",
+    title2: "Waiting Too Long.",
     paragraph:
-      "Students confirm what they've seen. You confirm what gets done. That handoff is the whole system working exactly as it should.",
+      "Reports sitting past 48 hours start losing student trust in the system. Clear the urgent ones first the queue rewards attention, not just speed.",
   },
   {
-    title1: "Clear the Queue,",
-    title2: "Build the Trust.",
+    title1: "Every Report,",
+    title2: "A Real Person.",
     paragraph:
-      "Every campus that responds fast is a campus students keep reporting to. Slow queues teach people to stop bothering don't let that happen here.",
+      "Behind every card is a student who filed something and a handful who confirmed it. Treat the queue like the responsibility it actually is.",
   },
   {
-    title1: "This Is",
-    title2: "Meaningful Work.",
+    title1: "Clear It Down,",
+    title2: "Not Just Through.",
     paragraph:
-      "It might look like a queue of tickets. It's actually a running record of people who needed something fixed and someone who showed up to fix it.",
+      "Escalate what needs another department. Verify what's ready. A queue that moves is a campus that believes reporting actually works.",
   },
 ];
-const AdminDashboardHero = ({ darkMode }) => {
+
+const ReportQueueHeader = ({ darkMode }) => {
   const shouldReduceMotion = useReducedMotion();
-  const hasUrgent = MOCK_URGENT.count > 0;
+  const hasUrgent = SUMMARY.urgent > 0;
 
   const [loading, setLoading] = useState(true);
   const [currentHero, setCurrentHero] = useState(0);
@@ -85,9 +84,9 @@ const AdminDashboardHero = ({ darkMode }) => {
   }, []);
 
   const statsTiles = [
-    { title: "Pending Action", value: loading ? "—" : `${ADMIN_STATS.pending}` },
-    { title: "Resolved This Week", value: loading ? "—" : `${ADMIN_STATS.resolvedThisWeek}` },
-    { title: "Avg Response", value: loading ? "—" : `${ADMIN_STATS.avgResponseHrs}h` },
+    { title: "In Queue", value: loading ? "—" : `${SUMMARY.total}` },
+    { title: "Urgent", value: loading ? "—" : `${SUMMARY.urgent}` },
+    { title: "Avg. Wait", value: loading ? "—" : `${SUMMARY.avgWaitHours}h` },
   ];
 
   const focusRing = darkMode
@@ -120,7 +119,7 @@ const AdminDashboardHero = ({ darkMode }) => {
         }}
       />
 
-      {/* WATERMARK — this is the administration's desk, not a student's */}
+      {/* WATERMARK */}
       <div
         aria-hidden="true"
         className="lls-display pointer-events-none select-none absolute -top-6 right-2 sm:right-6 text-[90px] sm:text-[140px] lg:text-[180px] font-black leading-none tracking-tight"
@@ -129,10 +128,10 @@ const AdminDashboardHero = ({ darkMode }) => {
           transform: "rotate(-6deg)",
         }}
       >
-        ADMIN
+        QUEUE
       </div>
 
-      {/* GLOW — single, subtle, brand-colored */}
+      {/* GLOW */}
       <motion.div
         animate={shouldReduceMotion ? { opacity: 0.14 } : { scale: [1, 1.1, 1], opacity: [0.12, 0.2, 0.12] }}
         transition={shouldReduceMotion ? {} : { duration: 6, repeat: Infinity }}
@@ -158,11 +157,11 @@ const AdminDashboardHero = ({ darkMode }) => {
                 <span className="relative inline-flex h-2.5 w-2.5 bg-primary" />
               </span>
               <span className="lls-mono text-[11px] font-semibold tracking-[0.15em] uppercase">
-                Admin Overview — {MOCK_ADMIN.campus} Campus
+                {SUMMARY.total} In Queue — {SUMMARY.urgent} Urgent
               </span>
             </motion.div>
 
-            {/* TITLE — rotates through heroContent, same carousel pattern as the student headers */}
+            {/* TITLE — rotates through heroContent */}
             <div className="min-h-[220px] sm:min-h-[250px]">
               <AnimatePresence mode="wait">
                 <motion.div
@@ -196,7 +195,7 @@ const AdminDashboardHero = ({ darkMode }) => {
                     </motion.span>
                   </h1>
 
-                  {/* LETTERHEAD RULE — double rule under the headline, document-header cue */}
+                  {/* LETTERHEAD RULE */}
                   <div className="mt-4 w-20 sm:w-28">
                     <div className="h-[3px] bg-primary" />
                     <div className={`h-px mt-1 ${darkMode ? "bg-white/20" : "bg-gray-300"}`} />
@@ -217,7 +216,7 @@ const AdminDashboardHero = ({ darkMode }) => {
               </AnimatePresence>
             </div>
 
-            {/* STATS — index-card treatment: thin top rule per tile, mono figures */}
+            {/* STATS */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -234,18 +233,10 @@ const AdminDashboardHero = ({ darkMode }) => {
                       : "bg-surface-light border-x border-b border-x-gray-200 border-b-gray-200 hover:bg-white"
                   }`}
                 >
-                  <h3
-                    className={`lls-mono text-xl sm:text-2xl font-semibold ${
-                      darkMode ? "text-white" : "text-gray-950"
-                    }`}
-                  >
+                  <h3 className={`lls-mono text-xl sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-950"}`}>
                     {item.value}
                   </h3>
-                  <p
-                    className={`lls-mono mt-1 text-[10px] sm:text-xs uppercase tracking-[0.12em] ${
-                      darkMode ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
+                  <p className={`lls-mono mt-1 text-[10px] sm:text-xs uppercase tracking-[0.12em] ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                     {item.title}
                   </p>
                 </motion.div>
@@ -260,41 +251,39 @@ const AdminDashboardHero = ({ darkMode }) => {
               className="mt-7 flex flex-col sm:flex-row gap-4"
             >
               <motion.div whileHover={shouldReduceMotion ? {} : { y: -2 }} whileTap={{ scale: 0.98 }}>
-                <Link
-                  to="/admin/report-queue"
+                <a
+                  href="#queue-table"
                   className={`group relative overflow-hidden h-[52px] px-6 bg-primary text-white font-semibold flex items-center justify-center gap-3 shadow-[0_15px_40px_rgba(193,18,31,0.25)] ${focusRing}`}
                 >
                   <span className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-all duration-1000" />
-                  Review Queue
+                  Start Verifying
                   <FiArrowRight />
-                </Link>
+                </a>
               </motion.div>
 
               <motion.div whileHover={shouldReduceMotion ? {} : { y: -2 }} whileTap={{ scale: 0.98 }}>
-                <a
-                  href="#admin-reports"
+                <Link
+                  to="/admin/dashboard"
                   className={`h-[52px] px-6 border font-semibold transition-colors duration-300 flex items-center justify-center ${focusRing} ${
                     darkMode
                       ? "border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.05]"
                       : "border-gray-200 bg-surface-light text-gray-950 hover:bg-white"
                   }`}
                 >
-                  Jump to Reports
-                </a>
+                  Back to Dashboard
+                </Link>
               </motion.div>
             </motion.div>
           </div>
 
-          {/* RIGHT PANEL — "Case File" urgent-queue card (folds in the old alert banner) */}
+          {/* RIGHT PANEL — "Case File" queue snapshot */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.5 }}
-            className={`relative border p-5 ${
-              darkMode ? "bg-white/[0.03] border-white/10" : "bg-surface-light border-gray-200"
-            }`}
+            className={`relative border p-5 ${darkMode ? "bg-white/[0.03] border-white/10" : "bg-surface-light border-gray-200"}`}
           >
-            {/* STAMP — URGENT pulses while overdue reports exist, CLEAR once they don't */}
+            {/* STAMP */}
             <AnimatePresence>
               {!loading && (
                 <motion.div
@@ -314,90 +303,79 @@ const AdminDashboardHero = ({ darkMode }) => {
                   ) : (
                     <FiCheckCircle className="text-xs" />
                   )}
-                  <span className="lls-mono text-[10px] font-bold tracking-[0.15em]">
-                    {hasUrgent ? "URGENT" : "CLEAR"}
-                  </span>
+                  <span className="lls-mono text-[10px] font-bold tracking-[0.15em]">{hasUrgent ? "URGENT" : "CLEAR"}</span>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* HEADER */}
             <div>
-              <p
-                className={`lls-mono text-[10px] uppercase tracking-[0.2em] ${
-                  darkMode ? "text-gray-500" : "text-gray-400"
-                }`}
-              >
+              <p className={`lls-mono text-[10px] uppercase tracking-[0.2em] ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
                 <FiFileText className="inline -mt-0.5 mr-1" />
-                QUEUE STATUS
+                QUEUE SNAPSHOT
               </p>
               <h3 className={`lls-display mt-2 text-2xl font-bold ${darkMode ? "text-white" : "text-gray-950"}`}>
-                {hasUrgent ? "Needs Review" : "All Caught Up"}
+                {hasUrgent ? "Needs Attention" : "All Caught Up"}
               </h3>
             </div>
 
-            {hasUrgent ? (
-              <>
-                {/* SCORE — overdue count as the headline figure */}
-                <div className="mt-7">
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <h2 className={`lls-mono text-5xl font-semibold ${darkMode ? "text-white" : "text-gray-950"}`}>
-                        {MOCK_URGENT.count}
-                      </h2>
-                      <p className={`mt-2 text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Reports overdue 48h+</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-sm font-semibold text-primary">
-                      <FiClock />
-                      {MOCK_URGENT.oldestHours}h oldest
-                    </div>
-                  </div>
+            {/* SCORE */}
+            <div className="mt-7">
+              <div className="flex items-end justify-between">
+                <div>
+                  <h2 className={`lls-mono text-5xl font-semibold ${darkMode ? "text-white" : "text-gray-950"}`}>
+                    {loading ? "—" : SUMMARY.total}
+                  </h2>
+                  <p className={`mt-2 text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Reports awaiting review</p>
                 </div>
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-primary">
+                  <FiClock />
+                  {QUEUE_SNAPSHOT.oldestWaitHours}h oldest
+                </div>
+              </div>
+            </div>
 
-                {/* PERFORATION */}
-                <div className={`mt-6 border-t border-dashed ${darkMode ? "border-white/15" : "border-gray-300"}`} />
+            {/* PERFORATION */}
+            <div className={`mt-6 border-t border-dashed ${darkMode ? "border-white/15" : "border-gray-300"}`} />
 
-                {/* ALERT — the original banner's message, reframed as a field note */}
-                <motion.div whileHover={shouldReduceMotion ? {} : { y: -4 }} className="mt-6 flex items-start gap-3">
-                  <div className="w-9 h-9 shrink-0 bg-primary text-white flex items-center justify-center">
-                    <FiAlertTriangle className="text-sm" />
+            {/* META ROWS */}
+            <div className="mt-6 flex flex-col gap-2.5">
+              {[
+                { icon: <FiAlertTriangle />, label: "Urgent right now", value: `${SUMMARY.urgent}` },
+                { icon: <FiTag />, label: "Most common category", value: QUEUE_SNAPSHOT.topCategory },
+              ].map((row, i) => (
+                <motion.div
+                  key={row.label}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: shouldReduceMotion ? 0 : 0.7 + i * 0.08 }}
+                  className={`flex items-center justify-between gap-3 border px-3.5 py-2.5 ${
+                    darkMode ? "border-white/10 bg-white/[0.02]" : "border-gray-200 bg-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 shrink-0 bg-primary/10 text-primary flex items-center justify-center text-sm">{row.icon}</div>
+                    <span className={`text-[12.5px] font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{row.label}</span>
                   </div>
-                  <div>
-                    <h4
-                      className={`lls-mono text-[10px] font-bold uppercase tracking-[0.15em] ${
-                        darkMode ? "text-gray-400" : "text-gray-500"
-                      }`}
-                    >
-                      Action Needed
-                    </h4>
-                    <p className={`mt-1.5 text-sm leading-relaxed ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
-                      <span className="font-bold">{MOCK_URGENT.count} reports</span> have waited 48+ hours for admin
-                      action. The oldest has been sitting for {MOCK_URGENT.oldestHours} hours.
-                    </p>
-                    <Link
-                      to="/admin/report-queue"
-                      className="mt-2.5 inline-flex items-center gap-1.5 text-[12px] font-bold text-primary hover:text-primary-dark transition-colors duration-150"
-                    >
-                      Review Queue <FiArrowRight size={12} />
-                    </Link>
-                  </div>
+                  <span className={`text-[12.5px] font-bold ${darkMode ? "text-white" : "text-gray-950"}`}>{row.value}</span>
                 </motion.div>
-              </>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="mt-8 flex flex-col items-center text-center py-4"
-              >
-                <div className="w-12 h-12 flex items-center justify-center bg-emerald-500/10 text-emerald-500">
-                  <FiInbox size={20} />
-                </div>
-                <p className={`mt-4 text-sm leading-relaxed max-w-[220px] ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                  No reports overdue 48+ hours. The queue is fully up to date on {MOCK_ADMIN.campus} campus.
+              ))}
+            </div>
+
+            {/* TIP CARD */}
+            <motion.div whileHover={shouldReduceMotion ? {} : { y: -4 }} className="mt-6 flex items-start gap-3">
+              <div className="w-9 h-9 shrink-0 bg-primary text-white flex items-center justify-center">
+                <FiZap className="text-sm" />
+              </div>
+              <div>
+                <h4 className={`lls-mono text-[10px] font-bold uppercase tracking-[0.15em] ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                  Quick Tip
+                </h4>
+                <p className={`mt-1.5 text-sm leading-relaxed ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                  Sort by "Urgent" first clearing the oldest reports keeps average wait time down for everyone else too.
                 </p>
-              </motion.div>
-            )}
+              </div>
+            </motion.div>
           </motion.div>
         </div>
       </div>
@@ -405,4 +383,4 @@ const AdminDashboardHero = ({ darkMode }) => {
   );
 };
 
-export default AdminDashboardHero;
+export default ReportQueueHeader;

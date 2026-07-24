@@ -383,7 +383,7 @@ const Login = () => {
                   type="text"
                   value={form.fullName}
                   onChange={(e) => updateField("fullName", e.target.value)}
-                  placeholder="e.g. Sarah Bello"
+                  placeholder="e.g. Kayode Afolarin"
                   className={inputCls("fullName")}
                 />
               </div>

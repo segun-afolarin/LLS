@@ -20,11 +20,11 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 */
 
 const NAV_ITEMS = [
-  { title: "Home", path: "/dashboard", icon: <FiHome /> },
-  { title: "Feed", path: "/campus-feed", icon: <FiRss /> },
+  { title: "Home", path: "/student/dashboard", icon: <FiHome /> },
+  { title: "Feed", path: "/student/campus-feed", icon: <FiRss /> },
   { title: "__action__" },
-  { title: "Reports", path: "/my-reports", icon: <FiFolder /> },
-  { title: "Profile", path: "/profile", icon: <FiUser /> },
+  { title: "Reports", path: "/student/my-reports", icon: <FiFolder /> },
+  { title: "Profile", path: "/student/profile", icon: <FiUser /> },
 ];
 
 // How close to the bottom of the page (in px) before the nav reveals itself.
@@ -99,7 +99,7 @@ const FloatingBottomNav = ({ darkMode }) => {
                   <motion.button
                     whileTap={{ scale: 0.92 }}
                     whileHover={{ y: -2 }}
-                    onClick={() => navigate("/report-issue")}
+                    onClick={() => navigate("/student/report-issue")}
                     aria-label="Report an issue"
                     className="absolute -top-5 w-14 h-14 bg-primary text-white flex items-center justify-center shadow-[0_10px_28px_rgba(193,18,31,0.4)]"
                   >

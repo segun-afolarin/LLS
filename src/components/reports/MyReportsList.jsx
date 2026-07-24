@@ -41,10 +41,17 @@ import {
     for real PATCH /api/reports/:id and DELETE /api/reports/:id calls
     once the backend exists, and this component won't need
     restructuring, just the two handlers rewired.
-  - Editing is intentionally text-only (title, description, location,
-    category) — the photo evidence can't be changed here — and is only
-    offered for reports still in "pending" status, i.e. reports that
-    haven't started collecting confirmations yet.
+  - Editing is inline (no modal/popup): the card's own text turns into
+    form fields under an "Edit" toggle. Editing is intentionally
+    text-only (title, description, location, category) — the photo
+    evidence can't be changed here.
+  - Edit is gated on confirmation count, delete is not: a report with
+    ZERO confirmations can be edited (nobody has acted on it yet, so
+    it's still safe to change) AND deleted. Once it has at least one
+    confirmation, editing the text would be misleading to the people
+    who already confirmed the original claim, so only Delete remains
+    — swap this rule out easily by editing `canEdit` / `canDelete`
+    inside MyReportCard below.
 */
 
 const CATEGORIES = ["Hostel", "Portal/ICT", "Security", "Water", "Electricity", "Library", "Medical", "Harassment", "General"];
@@ -299,7 +306,7 @@ const ConfirmerAvatars = ({ confirmers, darkMode }) => {
   const extra = confirmers.length - visible.length;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
       <div className="flex -space-x-2">
         {visible.map((c, i) => (
           <Avatar key={i} name={c.name} avatar={c.avatar} className="relative w-8 h-8 rounded-full border-2 border-primary" />
@@ -356,84 +363,50 @@ const StatusStepper = ({ status, darkMode }) => {
 };
 
 /* ------------------------------------------------------------------ */
-/* EDIT MODAL — text fields only, no image, pending reports only       */
+/* INLINE EDIT FORM — replaces the card's text block in place,         */
+/* no modal/popup. Only ever mounted for reports with 0 confirmations. */
 /* ------------------------------------------------------------------ */
 
-const EditReportModal = ({ report, darkMode, onClose, onSave }) => {
+const InlineEditForm = ({ report, darkMode, onCancel, onSave, saving }) => {
   const [form, setForm] = useState({
     title: report.title,
     description: report.description,
     location: report.location,
     category: report.category,
   });
-  const [saving, setSaving] = useState(false);
 
   const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+  const isValid = form.title.trim() && form.description.trim() && form.location.trim();
 
-  const handleSave = async () => {
-    setSaving(true);
-    // Simulated save delay — swap for a real PATCH /api/reports/:id once the backend exists.
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    onSave(report.id, form);
-    setSaving(false);
-  };
+  const fieldClass = (extra = "") =>
+    `w-full px-3.5 py-2.5 border text-sm outline-none transition-colors duration-150 ${
+      darkMode
+        ? "bg-white/[0.03] border-white/10 text-white placeholder:text-gray-600 focus:border-primary/60"
+        : "bg-white border-gray-200 text-gray-950 placeholder:text-gray-400 focus:border-primary/60"
+    } ${extra}`;
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-      onClick={(e) => e.target === e.currentTarget && !saving && onClose()}
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      className="overflow-hidden"
     >
-      <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.97 }}
-        transition={{ type: "spring", stiffness: 280, damping: 26 }}
-        className={`relative w-full max-w-lg max-h-[90vh] overflow-y-auto border ${darkMode ? "bg-[#0A0A0C] border-white/10" : "bg-white border-gray-200"}`}
-      >
-        <div className={`flex items-start justify-between gap-4 p-6 border-b ${darkMode ? "border-white/10" : "border-gray-100"}`}>
-          <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 shrink-0 bg-primary text-white flex items-center justify-center">
-              <FiEdit2 size={16} />
-            </div>
-            <div>
-              <h3 className={`text-[16px] font-bold ${darkMode ? "text-white" : "text-gray-950"}`}>Edit Report</h3>
-              <p className={`mt-0.5 text-[12px] ${darkMode ? "text-gray-500" : "text-gray-400"}`}>{report.id} · text details only</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            disabled={saving}
-            className={`p-1.5 disabled:opacity-40 ${darkMode ? "text-gray-500 hover:text-white" : "text-gray-400 hover:text-black"}`}
-          >
-            <FiX size={18} />
-          </button>
+      <div className={`border p-4 sm:p-5 ${darkMode ? "bg-white/[0.03] border-white/10" : "bg-[#FAFAFA] border-gray-200"}`}>
+        <div className="flex items-center gap-2 mb-4">
+          <FiEdit2 size={13} className="text-primary" />
+          <p className={`text-[11px] font-black uppercase tracking-[0.14em] ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+            Editing report — text only
+          </p>
         </div>
 
-        <div className="p-6 space-y-5">
-          {/* Photo notice — the evidence photo can't be changed here */}
-          <div className={`flex items-center gap-3 border p-3 ${darkMode ? "bg-white/[0.03] border-white/10" : "bg-[#FAFAFA] border-gray-200"}`}>
-            <div className="w-14 h-14 shrink-0 overflow-hidden border border-white/10">
-              <img src={report.image} alt={report.title} className="w-full h-full object-cover" />
-            </div>
-            <p className={`text-[12px] leading-relaxed ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
-              Photo evidence can't be changed after submission. Cancel this report and file a new one if you need a different photo.
-            </p>
-          </div>
-
-          <div>
-            <label className={`block text-[12px] font-bold uppercase tracking-wide mb-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="sm:col-span-1">
+            <label className={`block text-[11px] font-bold uppercase tracking-wide mb-1.5 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
               Category
             </label>
-            <select
-              value={form.category}
-              onChange={(e) => update("category", e.target.value)}
-              className={`w-full h-11 px-4 border text-sm outline-none transition-colors duration-150 ${
-                darkMode ? "bg-white/[0.03] border-white/10 text-white focus:border-primary/50" : "bg-white border-gray-200 text-gray-950 focus:border-primary/50"
-              }`}
-            >
+            <select value={form.category} onChange={(e) => update("category", e.target.value)} className={fieldClass()}>
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
@@ -442,87 +415,83 @@ const EditReportModal = ({ report, darkMode, onClose, onSave }) => {
             </select>
           </div>
 
-          <div>
-            <label className={`block text-[12px] font-bold uppercase tracking-wide mb-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-              Report Title
-            </label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => update("title", e.target.value)}
-              className={`w-full h-11 px-4 border text-sm outline-none transition-colors duration-150 ${
-                darkMode ? "bg-white/[0.03] border-white/10 text-white focus:border-primary/50" : "bg-white border-gray-200 text-gray-950 focus:border-primary/50"
-              }`}
-            />
-          </div>
-
-          <div>
-            <label className={`block text-[12px] font-bold uppercase tracking-wide mb-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+          <div className="sm:col-span-1">
+            <label className={`block text-[11px] font-bold uppercase tracking-wide mb-1.5 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
               Location
             </label>
             <div
-              className={`flex items-center gap-2.5 h-11 px-4 border transition-colors duration-150 ${
-                darkMode ? "bg-white/[0.03] border-white/10 focus-within:border-primary/50" : "bg-white border-gray-200 focus-within:border-primary/50"
+              className={`flex items-center gap-2 px-3.5 py-2.5 border transition-colors duration-150 ${
+                darkMode ? "bg-white/[0.03] border-white/10 focus-within:border-primary/60" : "bg-white border-gray-200 focus-within:border-primary/60"
               }`}
             >
-              <FiMapPin className={darkMode ? "text-gray-500" : "text-gray-400"} size={15} />
+              <FiMapPin className={darkMode ? "text-gray-500" : "text-gray-400"} size={14} />
               <input
                 type="text"
                 value={form.location}
                 onChange={(e) => update("location", e.target.value)}
-                className={`flex-1 bg-transparent text-sm outline-none ${darkMode ? "text-white" : "text-gray-950"}`}
+                className={`flex-1 min-w-0 bg-transparent text-sm outline-none ${darkMode ? "text-white" : "text-gray-950"}`}
               />
             </div>
           </div>
 
-          <div>
-            <label className={`block text-[12px] font-bold uppercase tracking-wide mb-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+          <div className="sm:col-span-2">
+            <label className={`block text-[11px] font-bold uppercase tracking-wide mb-1.5 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+              Report Title
+            </label>
+            <input type="text" value={form.title} onChange={(e) => update("title", e.target.value)} className={fieldClass()} />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className={`block text-[11px] font-bold uppercase tracking-wide mb-1.5 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
               Description
             </label>
             <textarea
-              rows={4}
+              rows={3}
               value={form.description}
               onChange={(e) => update("description", e.target.value)}
-              className={`w-full px-4 py-3 border text-sm outline-none resize-none transition-colors duration-150 ${
-                darkMode ? "bg-white/[0.03] border-white/10 text-white focus:border-primary/50" : "bg-white border-gray-200 text-gray-950 focus:border-primary/50"
-              }`}
+              className={fieldClass("resize-none")}
             />
           </div>
         </div>
 
-        <div className={`flex items-center justify-end gap-3 p-6 border-t ${darkMode ? "border-white/10" : "border-gray-100"}`}>
+        <p className={`mt-3.5 text-[11.5px] leading-relaxed ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+          Photo evidence can't be changed here. Delete this report and file a new one if you need a different photo.
+        </p>
+
+        <div className="mt-4 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5">
           <button
-            onClick={onClose}
+            onClick={onCancel}
             disabled={saving}
-            className={`h-11 px-5 border font-semibold text-sm transition-colors duration-200 disabled:opacity-50 ${
-              darkMode ? "border-white/10 text-gray-300 hover:bg-white/[0.05]" : "border-gray-200 text-gray-600 hover:bg-surface-light"
+            className={`flex items-center justify-center gap-1.5 h-10 px-4 border font-semibold text-xs uppercase tracking-wide transition-colors duration-200 disabled:opacity-50 ${
+              darkMode ? "border-white/10 text-gray-300 hover:bg-white/[0.05]" : "border-gray-200 text-gray-600 hover:bg-white"
             }`}
           >
-            Cancel
+            <FiX size={13} /> Cancel
           </button>
           <button
-            onClick={handleSave}
-            disabled={saving || !form.title.trim() || !form.description.trim() || !form.location.trim()}
-            className="flex items-center gap-2 h-11 px-6 bg-primary text-white font-semibold text-sm hover:bg-primary-dark transition-colors duration-200 disabled:opacity-60"
+            onClick={() => isValid && onSave(form)}
+            disabled={saving || !isValid}
+            className="flex items-center justify-center gap-1.5 h-10 px-5 bg-primary text-white font-semibold text-xs uppercase tracking-wide hover:bg-primary-dark transition-colors duration-200 disabled:opacity-60"
           >
             {saving ? (
               <>
-                <FiLoader className="animate-spin" size={14} /> Saving...
+                <FiLoader className="animate-spin" size={13} /> Saving...
               </>
             ) : (
               <>
-                <FiSave size={14} /> Save Changes
+                <FiSave size={13} /> Save Changes
               </>
             )}
           </button>
         </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 };
 
 /* ------------------------------------------------------------------ */
-/* DELETE CONFIRM MODAL                                                */
+/* DELETE CONFIRM MODAL — still a lightweight confirm dialog, since    */
+/* deletion is destructive and irreversible.                           */
 /* ------------------------------------------------------------------ */
 
 const DeleteConfirmModal = ({ report, darkMode, onCancel, onConfirm, deleting }) => (
@@ -588,12 +557,28 @@ const DeleteConfirmModal = ({ report, darkMode, onCancel, onConfirm, deleting })
 );
 
 /* ------------------------------------------------------------------ */
-/* "My Reports" card — wide hero image, confirmers, edit/delete        */
+/* "My Reports" card — wide hero image, confirmers, inline edit/delete */
+/*                                                                      */
+/* Rule: reports with 0 confirmations → editable only (inline form).   */
+/*       reports with 1+ confirmations → deletable only.               */
 /* ------------------------------------------------------------------ */
 
-const MyReportCard = ({ report, index, darkMode, onEdit, onDelete }) => {
-  const isPending = report.status === "pending";
+const MyReportCard = ({ report, index, darkMode, onSaveEdit, onDelete }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const canEdit = report.confirmations === 0;
+  const canDelete = true;
   const pct = Math.min(100, Math.round((report.confirmations / report.required) * 100));
+
+  const handleSave = async (updates) => {
+    setSaving(true);
+    // Simulated save delay — swap for a real PATCH /api/reports/:id once the backend exists.
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    onSaveEdit(report.id, updates);
+    setSaving(false);
+    setIsEditing(false);
+  };
 
   return (
     <motion.div
@@ -626,7 +611,7 @@ const MyReportCard = ({ report, index, darkMode, onEdit, onDelete }) => {
         {/* CONTENT */}
         <div className="p-5 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-3">
                 <div
                   className={`inline-flex items-center gap-2 px-2.5 py-1.5 text-xs font-bold uppercase tracking-[0.12em] border ${
@@ -642,12 +627,14 @@ const MyReportCard = ({ report, index, darkMode, onEdit, onDelete }) => {
                 </div>
               </div>
 
-              <p className={`mt-4 max-w-2xl text-sm leading-relaxed ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                {report.description}
-              </p>
+              {!isEditing && (
+                <p className={`mt-4 max-w-2xl text-sm leading-relaxed ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                  {report.description}
+                </p>
+              )}
             </div>
 
-            <div className={`border p-4 min-w-[160px] shrink-0 ${darkMode ? "bg-white/[0.03] border-white/10" : "bg-[#FAFAFA] border-gray-200"}`}>
+            <div className={`border p-4 min-w-[160px] w-full sm:w-auto shrink-0 ${darkMode ? "bg-white/[0.03] border-white/10" : "bg-[#FAFAFA] border-gray-200"}`}>
               <p className={`text-[10px] uppercase tracking-[0.2em] flex items-center gap-1.5 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
                 <FiUsers size={11} />
                 Confirmations
@@ -657,68 +644,91 @@ const MyReportCard = ({ report, index, darkMode, onEdit, onDelete }) => {
             </div>
           </div>
 
-          {/* PROGRESS */}
-          <div className="mt-6">
-            <div className="flex items-center justify-between mb-2.5">
-              <div className={`flex items-center gap-2 text-xs font-semibold ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                <FiUsers size={13} />
-                Verification progress
+          {/* INLINE EDIT FORM — replaces the description/detail area */}
+          <AnimatePresence initial={false}>
+            {isEditing && (
+              <div className="mt-4">
+                <InlineEditForm
+                  report={report}
+                  darkMode={darkMode}
+                  saving={saving}
+                  onCancel={() => setIsEditing(false)}
+                  onSave={handleSave}
+                />
               </div>
-              <span className="text-primary font-bold text-xs">
-                {report.confirmations}/{report.required}
-              </span>
-            </div>
+            )}
+          </AnimatePresence>
 
-            <div className={`relative h-2.5 overflow-hidden ${darkMode ? "bg-white/10" : "bg-gray-200"}`}>
-              <motion.div
-                initial={false}
-                animate={{ width: `${pct}%` }}
-                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                className="h-full bg-primary"
-              />
+          {/* PROGRESS */}
+          {!isEditing && (
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className={`flex items-center gap-2 text-xs font-semibold ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                  <FiUsers size={13} />
+                  Verification progress
+                </div>
+                <span className="text-primary font-bold text-xs">
+                  {report.confirmations}/{report.required}
+                </span>
+              </div>
+
+              <div className={`relative h-2.5 overflow-hidden ${darkMode ? "bg-white/10" : "bg-gray-200"}`}>
+                <motion.div
+                  initial={false}
+                  animate={{ width: `${pct}%` }}
+                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                  className="h-full bg-primary"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* WHO CONFIRMED IT */}
-          {report.confirmedBy?.length > 0 && (
+          {!isEditing && report.confirmedBy?.length > 0 && (
             <div className="mt-5">
               <ConfirmerAvatars confirmers={report.confirmedBy} darkMode={darkMode} />
             </div>
           )}
 
           {/* FOOTER */}
-          <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <StatusStepper status={report.status} darkMode={darkMode} />
-              <span className={`text-[11px] font-bold uppercase tracking-wide ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                {STAGE_LABELS[report.status]}
-              </span>
-            </div>
+          {!isEditing && (
+            <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <StatusStepper status={report.status} darkMode={darkMode} />
+                <span className={`text-[11px] font-bold uppercase tracking-wide ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                  {STAGE_LABELS[report.status]}
+                </span>
+              </div>
 
-            <div className={`flex items-center gap-2 text-xs ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
-              <FiClock size={13} />
-              Submitted {report.time}
+              <div className={`flex items-center gap-2 text-xs ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                <FiClock size={13} />
+                Submitted {report.time}
+              </div>
             </div>
-          </div>
+          )}
 
-          {isPending && (
+          {!isEditing && (canEdit || canDelete) && (
             <div className={`mt-5 pt-5 border-t flex items-center justify-end gap-2.5 ${darkMode ? "border-white/10" : "border-gray-100"}`}>
-              <button
-                onClick={() => onEdit(report)}
-                className={`flex items-center gap-1.5 px-4 py-2 text-[11.5px] font-bold border transition-colors duration-150 ${
-                  darkMode ? "border-white/10 text-gray-300 hover:bg-white/[0.05]" : "border-gray-200 text-gray-600 hover:bg-surface-light"
-                }`}
-              >
-                <FiEdit2 size={11} /> Edit
-              </button>
-              <button
-                onClick={() => onDelete(report)}
-                className={`flex items-center gap-1.5 px-4 py-2 text-[11.5px] font-bold border transition-colors duration-150 ${
-                  darkMode ? "border-primary/25 text-red-300 hover:bg-primary/10" : "border-red-200 text-primary hover:bg-red-50"
-                }`}
-              >
-                <FiXCircle size={11} /> Delete
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className={`flex items-center gap-1.5 px-4 py-2 text-[11.5px] font-bold border transition-colors duration-150 ${
+                    darkMode ? "border-white/10 text-gray-300 hover:bg-white/[0.05]" : "border-gray-200 text-gray-600 hover:bg-surface-light"
+                  }`}
+                >
+                  <FiEdit2 size={11} /> Edit
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  onClick={() => onDelete(report)}
+                  className={`flex items-center gap-1.5 px-4 py-2 text-[11.5px] font-bold border transition-colors duration-150 ${
+                    darkMode ? "border-primary/25 text-red-300 hover:bg-primary/10" : "border-red-200 text-primary hover:bg-red-50"
+                  }`}
+                >
+                  <FiXCircle size={11} /> Delete
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -802,8 +812,8 @@ const ConfirmedReportCard = ({ report, index, darkMode }) => {
           </div>
 
           {report.myEvidence && (
-            <div className={`mt-5 pt-5 border-t flex items-center gap-4 ${darkMode ? "border-white/10" : "border-gray-100"}`}>
-              <div className="w-32 h-24 shrink-0 overflow-hidden border border-primary/40">
+            <div className={`mt-5 pt-5 border-t flex flex-col sm:flex-row sm:items-center gap-4 ${darkMode ? "border-white/10" : "border-gray-100"}`}>
+              <div className="w-full sm:w-32 h-40 sm:h-24 shrink-0 overflow-hidden border border-primary/40">
                 <img src={report.myEvidence} alt={`Evidence you uploaded for ${report.title}`} className="w-full h-full object-cover" />
               </div>
               <div>
@@ -830,7 +840,7 @@ const ConfirmedReportCard = ({ report, index, darkMode }) => {
 /* ------------------------------------------------------------------ */
 
 const EmptySection = ({ darkMode, title, subtitle, icon: Icon = FiCompass }) => (
-  <div className={`border p-14 text-center ${darkMode ? "bg-[#0A0A0C] border-white/10" : "bg-white border-gray-200"}`}>
+  <div className={`border p-10 sm:p-14 text-center ${darkMode ? "bg-[#0A0A0C] border-white/10" : "bg-white border-gray-200"}`}>
     <div className={`w-12 h-12 mx-auto flex items-center justify-center mb-4 ${darkMode ? "bg-white/[0.04] text-gray-600" : "bg-gray-100 text-gray-400"}`}>
       <Icon size={20} />
     </div>
@@ -857,13 +867,11 @@ const MyReportsList = ({ darkMode, activeStatus = "all" }) => {
   const [reports, setReports] = useState(MOCK_MY_REPORTS);
   const [confirmedReports] = useState(MOCK_CONFIRMED_REPORTS);
 
-  const [editingReport, setEditingReport] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
   const handleSaveEdit = (id, updates) => {
     setReports((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
-    setEditingReport(null);
   };
 
   const handleConfirmDelete = async () => {
@@ -903,7 +911,7 @@ const MyReportsList = ({ darkMode, activeStatus = "all" }) => {
                   report={report}
                   index={index}
                   darkMode={darkMode}
-                  onEdit={setEditingReport}
+                  onSaveEdit={handleSaveEdit}
                   onDelete={setDeleteTarget}
                 />
               ))}
@@ -932,18 +940,6 @@ const MyReportsList = ({ darkMode, activeStatus = "all" }) => {
           </div>
         )}
       </div>
-
-      {/* EDIT MODAL */}
-      <AnimatePresence>
-        {editingReport && (
-          <EditReportModal
-            report={editingReport}
-            darkMode={darkMode}
-            onClose={() => setEditingReport(null)}
-            onSave={handleSaveEdit}
-          />
-        )}
-      </AnimatePresence>
 
       {/* DELETE CONFIRM MODAL */}
       <AnimatePresence>

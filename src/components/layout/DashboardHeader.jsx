@@ -386,15 +386,29 @@ const DashboardHeader = ({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen, m
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
+  // ── Track viewport so we know which state (mobile drawer vs desktop
+  // collapse) actually drives the menu icon. Before this fix, the icon was
+  // computed from `sidebarOpen` — a desktop-only concept — even on mobile,
+  // so it could render "X" on page load before the drawer was ever opened. ──
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 1280 : false
+  );
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1280);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const handleSidebarToggle = () => {
-    if (window.innerWidth < 1280) setMobileSidebar(!mobileSidebar);
+    if (isMobile) setMobileSidebar(!mobileSidebar);
     else setSidebarOpen(!sidebarOpen);
   };
 
   // Whether the menu button should show its "toggled" state — mobile drawer
   // open, or desktop sidebar collapsed. Gives the button a visible click
   // response instead of looking identical before and after the click.
-  const menuButtonActive = mobileSidebar || !sidebarOpen;
+  const menuButtonActive = isMobile ? mobileSidebar : !sidebarOpen;
 
   // ── Scroll-aware elevation — header gains depth once the page scrolls,
   // instead of sitting on a flat colored line all the time. ──────────────

@@ -1,5 +1,8 @@
 import { motion } from "framer-motion";
-import { FiSearch, FiHome, FiMonitor, FiShield, FiDroplet, FiZap, FiBook, FiHeart, FiMessageSquare, FiAlertTriangle } from "react-icons/fi";
+import {
+  FiSearch, FiChevronDown, FiHome, FiMonitor, FiShield, FiDroplet, FiZap,
+  FiBook, FiHeart, FiMessageSquare, FiAlertTriangle,
+} from "react-icons/fi";
 
 const CATEGORIES = [
   { key: "All", icon: null },
@@ -29,59 +32,82 @@ const FeedFilters = ({ darkMode, activeCategory, setActiveCategory, activeSort, 
     >
       <div className="max-w-[1100px] mx-auto space-y-3">
         {/* SEARCH + SORT ROW */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
           <div
-            className={`flex-1 flex items-center gap-2.5 h-10 px-3.5 border transition-colors duration-150 ${
+            className={`flex-1 flex items-center gap-2.5 h-11 sm:h-10 px-3.5 border transition-colors duration-150 ${
               darkMode ? "bg-white/[0.03] border-white/10 focus-within:border-primary/40" : "bg-white border-gray-200 focus-within:border-primary/40"
             }`}
           >
-            <FiSearch className={darkMode ? "text-gray-500" : "text-gray-400"} size={14} />
+            <FiSearch className={`shrink-0 ${darkMode ? "text-gray-500" : "text-gray-400"}`} size={14} />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search reports by title or location..."
-              className={`flex-1 bg-transparent text-sm outline-none ${darkMode ? "text-white placeholder:text-gray-600" : "text-gray-950 placeholder:text-gray-400"}`}
+              placeholder="Search title or location..."
+              /* text-base (16px) on mobile prevents iOS Safari's
+                 auto-zoom-on-focus; sm:text-sm restores the tighter
+                 desktop size once that bug no longer applies. */
+              className={`flex-1 min-w-0 bg-transparent text-base sm:text-sm outline-none ${darkMode ? "text-white placeholder:text-gray-600" : "text-gray-950 placeholder:text-gray-400"}`}
             />
           </div>
 
-          <select
-            value={activeSort}
-            onChange={(e) => setActiveSort(e.target.value)}
-            className={`h-10 px-3.5 border text-[13px] font-semibold outline-none shrink-0 ${
-              darkMode ? "bg-white/[0.03] border-white/10 text-gray-200" : "bg-white border-gray-200 text-gray-700"
-            }`}
-          >
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.key} value={opt.key}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          {/* Custom-chevron select wrapper — a bare <select> at full width
+              still renders the OS's own arrow glyph, which sits inside our
+              padding inconsistently across iOS/Android/desktop browsers.
+              appearance-none + our own FiChevronDown keeps it uniform. */}
+          <div className="relative w-full sm:w-auto shrink-0">
+            <select
+              value={activeSort}
+              onChange={(e) => setActiveSort(e.target.value)}
+              className={`w-full sm:w-auto h-11 sm:h-10 pl-3.5 pr-9 border text-base sm:text-[13px] font-semibold outline-none appearance-none ${
+                darkMode ? "bg-white/[0.03] border-white/10 text-gray-200" : "bg-white border-gray-200 text-gray-700"
+              }`}
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <FiChevronDown
+              size={14}
+              className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 ${darkMode ? "text-gray-500" : "text-gray-400"}`}
+            />
+          </div>
         </div>
 
         {/* CATEGORY CHIPS */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {CATEGORIES.map((cat) => {
-            const isActive = activeCategory === cat.key;
-            return (
-              <motion.button
-                key={cat.key}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => setActiveCategory(cat.key)}
-                className={`relative flex items-center gap-1.5 shrink-0 px-3.5 py-1.5 text-[12px] font-semibold whitespace-nowrap border transition-colors duration-200 ${
-                  isActive
-                    ? "bg-primary border-primary text-white"
-                    : darkMode
-                    ? "border-white/10 text-gray-400 hover:border-white/25 hover:text-white"
-                    : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-900"
-                }`}
-              >
-                {cat.icon}
-                {cat.key}
-              </motion.button>
-            );
-          })}
+        <div className="relative -mx-4 sm:mx-0 px-4 sm:px-0">
+          <div
+            className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none snap-x snap-proximity"
+            style={{
+              // Fades the row's edges so it's visually obvious there's more
+              // to scroll on mobile, without needing arrow buttons.
+              WebkitMaskImage: "linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)",
+              maskImage: "linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%)",
+            }}
+          >
+            {CATEGORIES.map((cat) => {
+              const isActive = activeCategory === cat.key;
+              return (
+                <motion.button
+                  key={cat.key}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setActiveCategory(cat.key)}
+                  className={`relative flex items-center gap-1.5 shrink-0 snap-start px-3.5 py-1.5 text-[12px] font-semibold whitespace-nowrap border transition-colors duration-200 ${
+                    isActive
+                      ? "bg-primary border-primary text-white"
+                      : darkMode
+                      ? "border-white/10 text-gray-400 hover:border-white/25 hover:text-white"
+                      : "border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-900"
+                  }`}
+                >
+                  {cat.icon}
+                  {cat.key}
+                </motion.button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

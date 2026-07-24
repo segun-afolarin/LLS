@@ -398,7 +398,7 @@ const Login = () => {
                   type="text"
                   value={form.studentId}
                   onChange={(e) => updateField("studentId", e.target.value)}
-                  placeholder="e.g. LLS/CSC/22/4471"
+                  placeholder="e.g. 01034065554"
                   className={inputCls("studentId")}
                 />
               </div>

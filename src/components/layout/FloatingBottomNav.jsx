@@ -8,16 +8,15 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
   ------------------
   Mobile-only companion to the sidebar. Visible below the `md` breakpoint.
   Five slots: Home, Campus Feed, an elevated center action (Report Issue),
-  My Reports, Profile — the four most frequent student actions, plus the
-  one action that deserves its own weight (reporting an issue).
+  My Reports, Profile.
 
   Behavior:
-  - Hides on scroll-down, reappears on scroll-up (keeps content unobstructed
-    while reading, comes back the instant the student wants to navigate).
+  - Stays hidden while the user is reading/scrolling through content.
+  - Reveals itself only once the user nears the bottom of the page,
+    so it doesn't pop in/out on every up/down scroll.
   - Active tab gets a sliding red underline + filled icon tile.
   - Safe-area aware for iOS home-indicator devices.
-  - Center action is a raised square (not a circle) to match the
-    zero-border-radius system — the one deliberately bold shape on the bar.
+  - Full-width bar flush against the screen edges (not a floating card).
 */
 
 const NAV_ITEMS = [
@@ -28,45 +27,56 @@ const NAV_ITEMS = [
   { title: "Profile", path: "/profile", icon: <FiUser /> },
 ];
 
+// How close to the bottom of the page (in px) before the nav reveals itself.
+const BOTTOM_REVEAL_THRESHOLD = 160;
+
 const FloatingBottomNav = ({ darkMode }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [visible, setVisible] = useState(true);
-  const lastScrollY = useRef(0);
+  const [visible, setVisible] = useState(false);
   const ticking = useRef(false);
 
   useEffect(() => {
-    lastScrollY.current = window.scrollY;
+    const evaluate = () => {
+      const scrollY = window.scrollY;
+      const viewportHeight = window.innerHeight;
+      const fullHeight = document.documentElement.scrollHeight;
+
+      // If the page itself is shorter than the viewport, there's nothing
+      // to scroll to — don't hide the nav in that case.
+      if (fullHeight <= viewportHeight) {
+        setVisible(true);
+        return;
+      }
+
+      const distanceFromBottom = fullHeight - (scrollY + viewportHeight);
+      setVisible(distanceFromBottom <= BOTTOM_REVEAL_THRESHOLD);
+    };
 
     const handleScroll = () => {
       if (ticking.current) return;
       ticking.current = true;
-
       requestAnimationFrame(() => {
-        const currentY = window.scrollY;
-        const delta = currentY - lastScrollY.current;
-
-        if (currentY < 40) {
-          setVisible(true);
-        } else if (delta > 6) {
-          setVisible(false);
-        } else if (delta < -6) {
-          setVisible(true);
-        }
-
-        lastScrollY.current = currentY;
+        evaluate();
         ticking.current = false;
       });
     };
 
+    // Check once on mount (e.g. short pages, or landing mid-page via anchor).
+    evaluate();
+
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("resize", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
   }, []);
 
   return (
     <motion.nav
-      initial={{ y: 0 }}
+      initial={{ y: 120 }}
       animate={{ y: visible ? 0 : 120 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className="md:hidden fixed bottom-0 left-0 right-0 z-40"
@@ -74,14 +84,14 @@ const FloatingBottomNav = ({ darkMode }) => {
     >
       <div
         className={`
-          relative mx-3 mb-3 border shadow-elevated backdrop-blur-2xl
+          relative w-full border-t backdrop-blur-2xl
           ${darkMode ? "bg-[#0A0A0C]/95 border-white/10" : "bg-white/95 border-gray-200"}
         `}
       >
         {/* top hairline accent */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-primary" />
 
-        <div className="flex items-stretch justify-between h-[64px] px-1">
+        <div className="flex items-stretch justify-between h-[60px] px-2">
           {NAV_ITEMS.map((item, index) => {
             if (item.title === "__action__") {
               return (
@@ -91,7 +101,7 @@ const FloatingBottomNav = ({ darkMode }) => {
                     whileHover={{ y: -2 }}
                     onClick={() => navigate("/report-issue")}
                     aria-label="Report an issue"
-                    className="absolute -top-6 w-14 h-14 bg-primary text-white flex items-center justify-center shadow-[0_10px_28px_rgba(193,18,31,0.4)]"
+                    className="absolute -top-5 w-14 h-14 bg-primary text-white flex items-center justify-center shadow-[0_10px_28px_rgba(193,18,31,0.4)]"
                   >
                     <FiPlus size={24} />
                   </motion.button>

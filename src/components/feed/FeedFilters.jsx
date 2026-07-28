@@ -62,7 +62,7 @@ const FeedFilters = ({ darkMode, activeCategory, setActiveCategory, activeSort, 
             <select
               value={activeSort}
               onChange={(e) => setActiveSort(e.target.value)}
-              className={`w-full sm:w-auto h-14 sm:h-11 pl-3.5 pr-9 border text-[13px] font-semibold outline-none appearance-none rounded-none ${
+              className={`w-full sm:w-auto h-12 sm:h-11 pl-3.5 pr-9 border text-[13px] font-semibold outline-none appearance-none rounded-none ${
                 darkMode ? "bg-white/[0.03] border-white/10 text-gray-200" : "bg-white border-gray-200 text-gray-700"
               }`}
             >

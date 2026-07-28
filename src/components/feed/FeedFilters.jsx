@@ -34,11 +34,11 @@ const FeedFilters = ({ darkMode, activeCategory, setActiveCategory, activeSort, 
         {/* SEARCH + SORT ROW */}
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <div
-            className={`flex-1 flex items-center gap-2.5 sm:gap-3 h-14 sm:h-11 px-3.5 border transition-colors duration-150 ${
+            className={`flex-1 flex items-center gap-3 h-16 sm:h-11 px-4 border transition-colors duration-150 ${
               darkMode ? "bg-white/[0.03] border-white/10 focus-within:border-primary/40" : "bg-white border-gray-200 focus-within:border-primary/40"
             }`}
           >
-            <FiSearch className={`shrink-0 ${darkMode ? "text-gray-500" : "text-gray-400"}`} size={17} />
+            <FiSearch className={`shrink-0 ${darkMode ? "text-gray-500" : "text-gray-400"}`} size={18} />
             <input
               type="text"
               value={search}
@@ -47,9 +47,8 @@ const FeedFilters = ({ darkMode, activeCategory, setActiveCategory, activeSort, 
               /* text-base (16px) on mobile prevents iOS Safari's
                  auto-zoom-on-focus; sm:text-sm restores the tighter
                  desktop size once that bug no longer applies.
-                 appearance-none strips iOS/Android's native rounded,
-                 shadowed input chrome so it matches the flat design
-                 system instead of fighting it. */
+                 appearance-none strips iOS/Android's native input
+                 chrome so it matches the flat design system. */
               className={`flex-1 min-w-0 h-full appearance-none rounded-none bg-transparent text-base sm:text-sm font-medium sm:font-normal leading-none outline-none ${darkMode ? "text-white placeholder:text-gray-600" : "text-gray-950 placeholder:text-gray-400"}`}
             />
           </div>

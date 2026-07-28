@@ -61,6 +61,34 @@ const generateTrackingId = () => {
   return `LLS-${n}`;
 };
 
+// Robust clipboard copy: tries the modern Clipboard API first, and falls
+// back to the old execCommand trick for sandboxed iframes / non-HTTPS /
+// browsers where navigator.clipboard is missing or blocked.
+const copyToClipboard = async (text) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      // fall through to fallback
+    }
+  }
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return ok;
+  } catch (err) {
+    return false;
+  }
+};
+
 const StepIndicator = ({ currentStep, darkMode }) => {
   return (
     <div className="flex items-center mb-8">
@@ -136,6 +164,7 @@ const ReportIssueForm = ({ darkMode }) => {
   const [submitted, setSubmitted] = useState(false);
   const [trackingId, setTrackingId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [copied, setCopied] = useState(false);
 
   const [form, setForm] = useState(EMPTY_FORM);
 
@@ -214,6 +243,15 @@ const ReportIssueForm = ({ darkMode }) => {
     setSubmitted(true);
   };
 
+  const handleCopyTrackingId = async () => {
+    if (!trackingId) return;
+    const ok = await copyToClipboard(trackingId);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    }
+  };
+
   const progressPct = ((step + 1) / STEPS.length) * 100;
 
   if (submitted) {
@@ -252,12 +290,21 @@ const ReportIssueForm = ({ darkMode }) => {
             {trackingId}
           </span>
           <button
-            onClick={() => navigator.clipboard?.writeText(trackingId)}
-            className={`p-1.5 transition-colors duration-150 ${darkMode ? "text-gray-500 hover:text-white" : "text-gray-400 hover:text-primary"}`}
+            onClick={handleCopyTrackingId}
+            className={`p-1.5 transition-colors duration-150 ${
+              copied
+                ? "text-primary"
+                : darkMode
+                ? "text-gray-500 hover:text-white"
+                : "text-gray-400 hover:text-primary"
+            }`}
             aria-label="Copy tracking ID"
           >
-            <FiCopy size={14} />
+            {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
           </button>
+          {copied && (
+            <span className="text-[11px] font-semibold text-primary">Copied</span>
+          )}
         </div>
 
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -538,14 +585,17 @@ const ReportIssueForm = ({ darkMode }) => {
                   ["Urgency", URGENCY_LEVELS.find((l) => l.key === form.urgency)?.label || "—"],
                   ["Photos attached", `${form.images.length}`],
                 ].map(([label, value]) => (
-                  <div key={label} className="flex items-start justify-between gap-4 px-4 py-3">
+                  <div
+                    key={label}
+                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 px-4 py-3"
+                  >
                     <span className={`text-[12.5px] font-semibold shrink-0 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>{label}</span>
-                    <span className={`text-[13px] font-bold text-right ${darkMode ? "text-white" : "text-gray-950"}`}>{value}</span>
+                    <span className={`text-[13px] font-bold text-left sm:text-right break-words ${darkMode ? "text-white" : "text-gray-950"}`}>{value}</span>
                   </div>
                 ))}
                 <div className="px-4 py-3">
                   <span className={`text-[12.5px] font-semibold block mb-1.5 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>Description</span>
-                  <p className={`text-[13px] leading-relaxed ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{form.description || "—"}</p>
+                  <p className={`text-[13px] leading-relaxed break-words ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{form.description || "—"}</p>
                 </div>
               </div>
 

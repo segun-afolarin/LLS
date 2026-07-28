@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiCpu, FiSend, FiUser, FiFileText, FiSearch, FiTag } from "react-icons/fi";
+import { FiCpu, FiSend, FiUser, FiFileText, FiSearch, FiTag, FiMic, FiMicOff, FiVolume2, FiVolumeX } from "react-icons/fi";
 
 /*
   FRONTEND-ONLY NOTE
@@ -22,7 +22,16 @@ import { FiCpu, FiSend, FiUser, FiFileText, FiSearch, FiTag } from "react-icons/
   Route that through your Laravel backend (which calls Gemini server-side)
   rather than calling Gemini directly from the browser, so your API key
   is never exposed client-side. The rest of this component — message
-  list, typing indicator, suggestions — needs no changes either way.
+  list, typing indicator, suggestions, mic input, and read-aloud — needs
+  no changes either way.
+
+  VOICE FEATURES
+  --------------
+  Both mic input and read-aloud use the browser's native Web Speech API
+  (SpeechRecognition + SpeechSynthesis) — no extra package, no backend.
+  Support varies: Chrome/Edge/Safari support both; Firefox currently
+  doesn't support SpeechRecognition. Everything degrades gracefully —
+  unsupported features just don't render their button.
 */
 
 const SUGGESTIONS = [
@@ -82,7 +91,7 @@ const TypingIndicator = ({ darkMode }) => (
   </div>
 );
 
-const MessageBubble = ({ message, darkMode }) => {
+const MessageBubble = ({ message, darkMode, onToggleSpeak, isSpeaking, speechSupported }) => {
   const isUser = message.role === "user";
 
   return (
@@ -100,16 +109,39 @@ const MessageBubble = ({ message, darkMode }) => {
         {isUser ? <FiUser size={13} /> : <FiCpu size={13} />}
       </div>
 
-      <div
-        className={`max-w-[80%] sm:max-w-[75%] px-4 py-3 text-[13.5px] leading-relaxed ${
-          isUser
-            ? "bg-primary text-white"
-            : darkMode
-            ? "bg-white/[0.04] border border-white/10 text-gray-200"
-            : "bg-white border border-gray-200 text-gray-800"
-        }`}
-      >
-        {message.content}
+      <div className={`flex items-end gap-1.5 ${isUser ? "flex-row-reverse" : ""}`}>
+        <div
+          className={`max-w-[80%] sm:max-w-[75%] px-4 py-3 text-[13.5px] leading-relaxed ${
+            isUser
+              ? "bg-primary text-white"
+              : darkMode
+              ? "bg-white/[0.04] border border-white/10 text-gray-200"
+              : "bg-white border border-gray-200 text-gray-800"
+          }`}
+        >
+          {message.content}
+        </div>
+
+        {/* Read-aloud button — only on AI replies, and only if the
+            browser supports speech synthesis. Lets someone who can't
+            read tap to hear the answer spoken back to them. */}
+        {!isUser && speechSupported && (
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => onToggleSpeak(message.content)}
+            aria-label={isSpeaking ? "Stop reading aloud" : "Read this reply aloud"}
+            className={`shrink-0 w-8 h-8 flex items-center justify-center transition-colors duration-150 ${
+              isSpeaking
+                ? "bg-primary text-white"
+                : darkMode
+                ? "text-gray-500 hover:text-white hover:bg-white/[0.05]"
+                : "text-gray-400 hover:text-primary hover:bg-surface-light"
+            }`}
+          >
+            {isSpeaking ? <FiVolumeX size={14} /> : <FiVolume2 size={14} />}
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );
@@ -119,12 +151,96 @@ const ChatWindow = ({ darkMode }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [autoRead, setAutoRead] = useState(false);
+  const [speakingIndex, setSpeakingIndex] = useState(null);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  const speechRecognitionSupported =
+    typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+  const speechSynthesisSupported = typeof window !== "undefined" && "speechSynthesis" in window;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isTyping]);
+
+  // Set up SpeechRecognition once on mount.
+  useEffect(() => {
+    if (!speechRecognitionSupported) return;
+    const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognitionCtor();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setInput(transcript);
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      recognition.onresult = null;
+      recognition.onend = null;
+      recognition.onerror = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Stop any speech synthesis on unmount.
+  useEffect(() => {
+    return () => {
+      if (speechSynthesisSupported) window.speechSynthesis.cancel();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      setInput("");
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
+  const speak = useCallback(
+    (text, index) => {
+      if (!speechSynthesisSupported) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95;
+      utterance.onend = () => setSpeakingIndex(null);
+      utterance.onerror = () => setSpeakingIndex(null);
+      setSpeakingIndex(index);
+      window.speechSynthesis.speak(utterance);
+    },
+    [speechSynthesisSupported]
+  );
+
+  const stopSpeaking = () => {
+    if (speechSynthesisSupported) window.speechSynthesis.cancel();
+    setSpeakingIndex(null);
+  };
+
+  const handleToggleSpeakForMessage = (content, index) => {
+    if (speakingIndex === index) {
+      stopSpeaking();
+    } else {
+      speak(content, index);
+    }
+  };
 
   const sendMessage = async (text) => {
     const trimmed = text.trim();
@@ -136,7 +252,14 @@ const ChatWindow = ({ darkMode }) => {
 
     const replyText = await getMockReply(trimmed);
 
-    setMessages((prev) => [...prev, { role: "assistant", content: replyText }]);
+    setMessages((prev) => {
+      const next = [...prev, { role: "assistant", content: replyText }];
+      if (autoRead) {
+        // Speak the reply once it's in state, indexed at its final position.
+        setTimeout(() => speak(replyText, next.length - 1), 50);
+      }
+      return next;
+    });
     setIsTyping(false);
   };
 
@@ -154,12 +277,36 @@ const ChatWindow = ({ darkMode }) => {
         <div className="w-9 h-9 shrink-0 bg-primary text-white flex items-center justify-center">
           <FiCpu size={15} />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <p className={`text-[13.5px] font-bold leading-none ${darkMode ? "text-white" : "text-gray-950"}`}>LLS AI Assistant</p>
           <p className={`mt-1 text-[11px] flex items-center gap-1.5 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
             <span className="w-1.5 h-1.5 bg-emerald-500" /> Online — mocked responses
           </p>
         </div>
+
+        {/* Auto-read toggle — for users who'd rather have every reply
+            spoken automatically than tap the speaker icon each time. */}
+        {speechSynthesisSupported && (
+          <button
+            type="button"
+            onClick={() => {
+              const next = !autoRead;
+              setAutoRead(next);
+              if (!next) stopSpeaking();
+            }}
+            aria-pressed={autoRead}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-2 text-[11.5px] font-semibold border transition-colors duration-150 ${
+              autoRead
+                ? "bg-primary border-primary text-white"
+                : darkMode
+                ? "border-white/10 text-gray-400 hover:border-white/25"
+                : "border-gray-200 text-gray-500 hover:border-gray-300"
+            }`}
+          >
+            {autoRead ? <FiVolume2 size={13} /> : <FiVolumeX size={13} />}
+            <span className="hidden sm:inline">Auto-read replies</span>
+          </button>
+        )}
       </div>
 
       {/* MESSAGES */}
@@ -171,7 +318,8 @@ const ChatWindow = ({ darkMode }) => {
             </div>
             <p className={`text-[15px] font-bold ${darkMode ? "text-white" : "text-gray-950"}`}>How can I help?</p>
             <p className={`mt-1.5 text-[12.5px] max-w-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-              Ask me to draft a report, check a report's status, or find the right category for an issue.
+              Ask me to draft a report, check a report's status, or find the right category for an issue. You can
+              type, tap the mic to speak, or turn on auto-read to have replies read aloud.
             </p>
 
             <div className="mt-6 flex flex-col gap-2 w-full max-w-sm">
@@ -192,7 +340,14 @@ const ChatWindow = ({ darkMode }) => {
         ) : (
           <>
             {messages.map((m, i) => (
-              <MessageBubble key={i} message={m} darkMode={darkMode} />
+              <MessageBubble
+                key={i}
+                message={m}
+                darkMode={darkMode}
+                speechSupported={speechSynthesisSupported}
+                isSpeaking={speakingIndex === i}
+                onToggleSpeak={(content) => handleToggleSpeakForMessage(content, i)}
+              />
             ))}
 
             <AnimatePresence>
@@ -213,12 +368,41 @@ const ChatWindow = ({ darkMode }) => {
 
       {/* INPUT */}
       <form onSubmit={handleSubmit} className={`flex items-center gap-2.5 p-4 border-t shrink-0 ${darkMode ? "border-white/10" : "border-gray-200"}`}>
+        {/* Mic button — speech-to-text so someone who can't type well
+            (or can't read to check their spelling) can just talk instead. */}
+        {speechRecognitionSupported && (
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.92 }}
+            onClick={toggleListening}
+            aria-label={isListening ? "Stop voice input" : "Speak your message"}
+            aria-pressed={isListening}
+            className={`relative h-11 w-11 shrink-0 flex items-center justify-center border transition-colors duration-200 ${
+              isListening
+                ? "bg-primary border-primary text-white"
+                : darkMode
+                ? "border-white/10 text-gray-400 hover:text-white hover:border-white/25"
+                : "border-gray-200 text-gray-500 hover:text-primary hover:border-gray-300"
+            }`}
+          >
+            {isListening && (
+              <motion.span
+                className="absolute inset-0 border-2 border-primary"
+                initial={{ opacity: 0.6, scale: 1 }}
+                animate={{ opacity: 0, scale: 1.4 }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
+              />
+            )}
+            {isListening ? <FiMicOff size={16} /> : <FiMic size={16} />}
+          </motion.button>
+        )}
+
         <input
           ref={inputRef}
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask the AI Assistant anything..."
+          placeholder={isListening ? "Listening..." : "Ask the AI Assistant anything..."}
           className={`flex-1 h-11 px-4 border text-sm outline-none transition-colors duration-150 ${
             darkMode
               ? "bg-white/[0.03] border-white/10 text-white placeholder:text-gray-600 focus:border-primary/50"

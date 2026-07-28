@@ -97,7 +97,7 @@ const AIAssistant = () => {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
             </span>
             <span className={`text-[11px] font-bold uppercase tracking-widest ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-              NationAura AI — Online
+              NationAura AI Online
             </span>
           </motion.div>
 

@@ -99,19 +99,19 @@ const MessageBubble = ({ message, darkMode, onToggleSpeak, isSpeaking, speechSup
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}
+      className={`flex gap-2 sm:gap-3 ${isUser ? "flex-row-reverse" : ""}`}
     >
       <div
-        className={`w-8 h-8 shrink-0 flex items-center justify-center text-sm ${
+        className={`w-7 h-7 sm:w-8 sm:h-8 shrink-0 flex items-center justify-center text-sm ${
           isUser ? (darkMode ? "bg-white/[0.08] text-gray-300" : "bg-gray-200 text-gray-600") : "bg-primary text-white"
         }`}
       >
-        {isUser ? <FiUser size={13} /> : <FiCpu size={13} />}
+        {isUser ? <FiUser size={12} /> : <FiCpu size={12} />}
       </div>
 
-      <div className={`flex items-end gap-1.5 ${isUser ? "flex-row-reverse" : ""}`}>
+      <div className={`flex items-end gap-1 sm:gap-1.5 min-w-0 ${isUser ? "flex-row-reverse" : ""}`}>
         <div
-          className={`max-w-[80%] sm:max-w-[75%] px-4 py-3 text-[13.5px] leading-relaxed ${
+          className={`max-w-[78vw] sm:max-w-[75%] px-3.5 sm:px-4 py-2.5 sm:py-3 text-[13px] sm:text-[13.5px] leading-relaxed break-words ${
             isUser
               ? "bg-primary text-white"
               : darkMode
@@ -131,7 +131,7 @@ const MessageBubble = ({ message, darkMode, onToggleSpeak, isSpeaking, speechSup
             whileTap={{ scale: 0.9 }}
             onClick={() => onToggleSpeak(message.content)}
             aria-label={isSpeaking ? "Stop reading aloud" : "Read this reply aloud"}
-            className={`shrink-0 w-8 h-8 flex items-center justify-center transition-colors duration-150 ${
+            className={`shrink-0 w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center transition-colors duration-150 ${
               isSpeaking
                 ? "bg-primary text-white"
                 : darkMode
@@ -139,7 +139,7 @@ const MessageBubble = ({ message, darkMode, onToggleSpeak, isSpeaking, speechSup
                 : "text-gray-400 hover:text-primary hover:bg-surface-light"
             }`}
           >
-            {isSpeaking ? <FiVolumeX size={14} /> : <FiVolume2 size={14} />}
+            {isSpeaking ? <FiVolumeX size={13} /> : <FiVolume2 size={13} />}
           </motion.button>
         )}
       </div>
@@ -273,14 +273,18 @@ const ChatWindow = ({ darkMode }) => {
   return (
     <div className={`flex-1 flex flex-col min-h-0 border ${darkMode ? "bg-[#0A0A0C] border-white/10" : "bg-white border-gray-200"} shadow-subtle`}>
       {/* HEADER STRIP */}
-      <div className={`flex items-center gap-3 px-5 py-4 border-b shrink-0 ${darkMode ? "border-white/10" : "border-gray-200"}`}>
-        <div className="w-9 h-9 shrink-0 bg-primary text-white flex items-center justify-center">
-          <FiCpu size={15} />
+      <div className={`flex items-center gap-2 sm:gap-3 px-3.5 sm:px-5 py-3 sm:py-4 border-b shrink-0 ${darkMode ? "border-white/10" : "border-gray-200"}`}>
+        <div className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 bg-primary text-white flex items-center justify-center">
+          <FiCpu size={14} className="sm:hidden" />
+          <FiCpu size={15} className="hidden sm:block" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className={`text-[13.5px] font-bold leading-none ${darkMode ? "text-white" : "text-gray-950"}`}>LLS AI Assistant</p>
-          <p className={`mt-1 text-[11px] flex items-center gap-1.5 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-            <span className="w-1.5 h-1.5 bg-emerald-500" /> Online — mocked responses
+          <p className={`text-[13px] sm:text-[13.5px] font-bold leading-none truncate ${darkMode ? "text-white" : "text-gray-950"}`}>
+            LLS AI Assistant
+          </p>
+          <p className={`mt-1 text-[10.5px] sm:text-[11px] flex items-center gap-1.5 truncate ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+            <span className="w-1.5 h-1.5 bg-emerald-500 shrink-0" />
+            <span className="truncate">Online — mocked responses</span>
           </p>
         </div>
 
@@ -295,7 +299,8 @@ const ChatWindow = ({ darkMode }) => {
               if (!next) stopSpeaking();
             }}
             aria-pressed={autoRead}
-            className={`shrink-0 flex items-center gap-1.5 px-3 py-2 text-[11.5px] font-semibold border transition-colors duration-150 ${
+            aria-label="Toggle auto-read replies"
+            className={`shrink-0 flex items-center gap-1.5 h-8 sm:h-auto px-2.5 sm:px-3 py-0 sm:py-2 text-[11px] sm:text-[11.5px] font-semibold border transition-colors duration-150 ${
               autoRead
                 ? "bg-primary border-primary text-white"
                 : darkMode
@@ -310,29 +315,30 @@ const ChatWindow = ({ darkMode }) => {
       </div>
 
       {/* MESSAGES */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-5 space-y-5 min-h-0">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3.5 sm:px-5 py-4 sm:py-5 space-y-4 sm:space-y-5 min-h-0">
         {isEmpty ? (
-          <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <div className={`w-14 h-14 flex items-center justify-center mb-4 ${darkMode ? "bg-white/[0.05] text-gray-400" : "bg-surface-light text-gray-400"}`}>
-              <FiCpu size={22} />
+          <div className="h-full flex flex-col items-center justify-center text-center px-2 sm:px-4">
+            <div className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center mb-3.5 sm:mb-4 ${darkMode ? "bg-white/[0.05] text-gray-400" : "bg-surface-light text-gray-400"}`}>
+              <FiCpu size={20} className="sm:hidden" />
+              <FiCpu size={22} className="hidden sm:block" />
             </div>
-            <p className={`text-[15px] font-bold ${darkMode ? "text-white" : "text-gray-950"}`}>How can I help?</p>
-            <p className={`mt-1.5 text-[12.5px] max-w-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+            <p className={`text-[14px] sm:text-[15px] font-bold ${darkMode ? "text-white" : "text-gray-950"}`}>How can I help?</p>
+            <p className={`mt-1.5 text-[12px] sm:text-[12.5px] max-w-[280px] sm:max-w-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
               Ask me to draft a report, check a report's status, or find the right category for an issue. You can
               type, tap the mic to speak, or turn on auto-read to have replies read aloud.
             </p>
 
-            <div className="mt-6 flex flex-col gap-2 w-full max-w-sm">
+            <div className="mt-5 sm:mt-6 flex flex-col gap-2 w-full max-w-sm">
               {SUGGESTIONS.map((s, i) => (
                 <button
                   key={i}
                   onClick={() => sendMessage(s.text)}
-                  className={`flex items-center gap-2.5 text-left px-4 py-2.5 text-[12.5px] font-medium border transition-colors duration-150 ${
+                  className={`flex items-center gap-2.5 text-left px-3.5 sm:px-4 py-2.5 text-[12px] sm:text-[12.5px] font-medium border transition-colors duration-150 ${
                     darkMode ? "border-white/10 text-gray-300 hover:bg-white/[0.05]" : "border-gray-200 text-gray-600 hover:bg-surface-light"
                   }`}
                 >
                   <span className="text-primary shrink-0">{s.icon}</span>
-                  {s.text}
+                  <span className="min-w-0">{s.text}</span>
                 </button>
               ))}
             </div>
@@ -352,11 +358,11 @@ const ChatWindow = ({ darkMode }) => {
 
             <AnimatePresence>
               {isTyping && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex gap-3">
-                  <div className="w-8 h-8 shrink-0 flex items-center justify-center text-sm bg-primary text-white">
-                    <FiCpu size={13} />
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex gap-2 sm:gap-3">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 shrink-0 flex items-center justify-center text-sm bg-primary text-white">
+                    <FiCpu size={12} />
                   </div>
-                  <div className={`px-4 py-3.5 ${darkMode ? "bg-white/[0.04] border border-white/10" : "bg-white border border-gray-200"}`}>
+                  <div className={`px-3.5 sm:px-4 py-3 sm:py-3.5 ${darkMode ? "bg-white/[0.04] border border-white/10" : "bg-white border border-gray-200"}`}>
                     <TypingIndicator darkMode={darkMode} />
                   </div>
                 </motion.div>
@@ -367,7 +373,7 @@ const ChatWindow = ({ darkMode }) => {
       </div>
 
       {/* INPUT */}
-      <form onSubmit={handleSubmit} className={`flex items-center gap-2.5 p-4 border-t shrink-0 ${darkMode ? "border-white/10" : "border-gray-200"}`}>
+      <form onSubmit={handleSubmit} className={`flex items-center gap-2 sm:gap-2.5 p-3 sm:p-4 border-t shrink-0 ${darkMode ? "border-white/10" : "border-gray-200"}`}>
         {/* Mic button — speech-to-text so someone who can't type well
             (or can't read to check their spelling) can just talk instead. */}
         {speechRecognitionSupported && (
@@ -377,7 +383,7 @@ const ChatWindow = ({ darkMode }) => {
             onClick={toggleListening}
             aria-label={isListening ? "Stop voice input" : "Speak your message"}
             aria-pressed={isListening}
-            className={`relative h-11 w-11 shrink-0 flex items-center justify-center border transition-colors duration-200 ${
+            className={`relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 flex items-center justify-center border transition-colors duration-200 ${
               isListening
                 ? "bg-primary border-primary text-white"
                 : darkMode
@@ -393,7 +399,7 @@ const ChatWindow = ({ darkMode }) => {
                 transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
               />
             )}
-            {isListening ? <FiMicOff size={16} /> : <FiMic size={16} />}
+            {isListening ? <FiMicOff size={15} /> : <FiMic size={15} />}
           </motion.button>
         )}
 
@@ -403,7 +409,9 @@ const ChatWindow = ({ darkMode }) => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={isListening ? "Listening..." : "Ask the AI Assistant anything..."}
-          className={`flex-1 h-11 px-4 border text-sm outline-none transition-colors duration-150 ${
+          /* text-base (16px) on mobile avoids iOS Safari's
+             auto-zoom-on-focus for inputs under 16px. */
+          className={`flex-1 min-w-0 h-10 sm:h-11 px-3.5 sm:px-4 border text-base sm:text-sm outline-none transition-colors duration-150 ${
             darkMode
               ? "bg-white/[0.03] border-white/10 text-white placeholder:text-gray-600 focus:border-primary/50"
               : "bg-surface-light border-gray-200 text-gray-950 placeholder:text-gray-400 focus:border-primary/50"
@@ -412,10 +420,10 @@ const ChatWindow = ({ darkMode }) => {
         <button
           type="submit"
           disabled={!input.trim() || isTyping}
-          className="h-11 w-11 shrink-0 flex items-center justify-center bg-primary text-white hover:bg-primary-dark transition-colors duration-200 disabled:opacity-50"
+          className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 flex items-center justify-center bg-primary text-white hover:bg-primary-dark transition-colors duration-200 disabled:opacity-50"
           aria-label="Send message"
         >
-          <FiSend size={16} />
+          <FiSend size={15} />
         </button>
       </form>
     </div>

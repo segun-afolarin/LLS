@@ -31,6 +31,14 @@ const DashboardSidebar = ({ sidebarOpen, mobileSidebar, setMobileSidebar, darkMo
 
   return (
     <>
+      {/* Hide the native scrollbar on the sidebar's scroll area — keeps
+          scrolling working, just without the browser's default track/thumb
+          rendering (which was showing up as a stray red squiggle here). */}
+      <style>{`
+        .lls-sidebar-scroll::-webkit-scrollbar { display: none; }
+        .lls-sidebar-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+      `}</style>
+
       {/* MOBILE OVERLAY */}
       <AnimatePresence>
         {mobileSidebar && (
@@ -79,7 +87,7 @@ const DashboardSidebar = ({ sidebarOpen, mobileSidebar, setMobileSidebar, darkMo
         <div className="h-[3px] w-full bg-primary" />
 
         {/* CONTENT */}
-        <div className="relative z-10 h-full overflow-y-auto overscroll-contain flex flex-col">
+        <div className="lls-sidebar-scroll relative z-10 h-full overflow-y-auto overscroll-contain flex flex-col">
           {/* HEADER — wordmark only, no subtitle text, matches reference */}
           <div className={`px-4 py-6 border-b ${darkMode ? "border-white/10" : "border-gray-200"}`}>
             <AnimatePresence mode="wait">

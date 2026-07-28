@@ -11,6 +11,7 @@ import {
   FiLoader,
   FiAlertCircle,
   FiCompass,
+  FiRefreshCw,
 } from "react-icons/fi";
 
 /*
@@ -22,17 +23,25 @@ import {
   pipeline exists.
 
   CONFIRM FLOW is fully simulated: opening the modal, uploading a photo,
-  the "AI is verifying" stage, and the final "Confirmation Submitted"
-  state are all local state + timeouts, standing in for a real
+  a review step, the "AI is verifying" stage, and the final "Confirmation
+  Submitted" state are all local state + timeouts, standing in for a real
   POST /api/reports/:id/confirm that would return either success or a
   mismatch error from an image-verification step. The "error" stage
   below is wired but never triggered by the mock — swap the resolved
   Promise in handleConfirm for a real awaited request/catch once that
   endpoint exists, and the error UI will already work.
 
+  Once a report is confirmed and its modal is closed, it's removed from
+  `reports` (in-memory only, via `removedIds`) so it animates out of the
+  feed instead of lingering as "Confirmed". Nothing is persisted, so a
+  page refresh re-fetches MOCK_FEED from scratch and the report is back
+  — swap that removal for a real filtered GET once "my confirmed
+  reports" has somewhere else to live (a separate tab, etc).
+
   `required` (confirmations needed before escalation) varies by urgency
-  here — critical reports need fewer confirmations to move faster,
-  which mirrors how this would realistically work in production.
+  here — critical reports need fewer confirmations (3) to move faster,
+  high needs 4, everything else needs 5 — which mirrors how this would
+  realistically work in production.
 */
 
 const initialsOf = (name = "") =>
@@ -55,7 +64,7 @@ const CATEGORY_LABELS = {
   General: "General",
 };
 
-const requiredFor = (urgency) => (urgency === "critical" ? 5 : urgency === "high" ? 7 : 10);
+const requiredFor = (urgency) => (urgency === "critical" ? 3 : urgency === "high" ? 4 : 5);
 
 const timeToMinutes = (t) => {
   const num = parseInt(t, 10) || 0;
@@ -75,7 +84,7 @@ const RAW_FEED = [
     urgency: "medium",
     location: "Male Hostel, Block C, 2nd floor",
     time: "12m ago",
-    confirmations: 6,
+    confirmations: 3,
     confirmedByMe: false,
     image: "https://picsum.photos/seed/LLS-2291/700/500",
     description: "Water heater in the 2nd floor bathroom has been cold for three days now. Several of us have reported it verbally already.",
@@ -106,7 +115,7 @@ const RAW_FEED = [
     urgency: "high",
     location: "Gate 2, main entrance",
     time: "2h ago",
-    confirmations: 4,
+    confirmations: 3,
     confirmedByMe: false,
     image: "https://picsum.photos/seed/LLS-2288/700/500",
     description: "The light near the security post at Gate 2 has been out for a week. It's genuinely dark walking through there at night.",
@@ -120,7 +129,7 @@ const RAW_FEED = [
     urgency: "critical",
     location: "Female Hostel, back gate",
     time: "3h ago",
-    confirmations: 3,
+    confirmations: 2,
     confirmedByMe: false,
     image: "https://picsum.photos/seed/LLS-2299/700/500",
     description: "A non-student has been loitering near the back gate for two evenings in a row. Security should be notified urgently.",
@@ -137,7 +146,7 @@ const RAW_FEED = [
     urgency: "medium",
     location: "University-wide (student portal)",
     time: "44m ago",
-    confirmations: 10,
+    confirmations: 5,
     confirmedByMe: true,
     image: "https://picsum.photos/seed/LLS-2290/700/500",
     description: "Getting a 500 error on login for the past three days. Can't check my results or register courses.",
@@ -157,7 +166,7 @@ const RAW_FEED = [
     urgency: "high",
     location: "Female Hostel, Wing B",
     time: "5h ago",
-    confirmations: 6,
+    confirmations: 3,
     confirmedByMe: false,
     image: "https://picsum.photos/seed/LLS-2285/700/500",
     description: "No running water in Wing B since yesterday morning. Entire wing is affected, not just one room.",
@@ -171,7 +180,7 @@ const RAW_FEED = [
     urgency: "low",
     location: "Main Library, 3rd floor reading room",
     time: "1d ago",
-    confirmations: 10,
+    confirmations: 5,
     confirmedByMe: false,
     image: "https://picsum.photos/seed/LLS-2281/700/500",
     description: "AC has been off for a week during peak exam prep. It gets uncomfortably warm by midday.",
@@ -249,11 +258,58 @@ const SubmittedBy = ({ submitter, darkMode }) => {
 };
 
 /* ------------------------------------------------------------------ */
-/* CONFIRMATION MODAL — upload / verifying / submitted / error         */
+/* Confetti — small brand-red burst, no external library               */
+/* ------------------------------------------------------------------ */
+
+const RED_SHADES = ["#DD1B22", "#B0141C", "#FF5B52", "#8C0F17", "#E8595A"];
+
+const ConfettiBurst = ({ active }) => {
+  const pieces = useMemo(() => {
+    if (!active) return [];
+    return Array.from({ length: 26 }).map((_, i) => ({
+      id: i,
+      dx: (Math.random() - 0.5) * 260,
+      dy: 90 + Math.random() * 170,
+      rotate: (Math.random() - 0.5) * 720,
+      delay: Math.random() * 0.15,
+      duration: 0.9 + Math.random() * 0.5,
+      color: RED_SHADES[i % RED_SHADES.length],
+      w: 5 + Math.random() * 4,
+      h: 10 + Math.random() * 8,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
+  if (!active) return null;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-visible" aria-hidden="true">
+      {pieces.map((p) => (
+        <motion.span
+          key={p.id}
+          initial={{ x: 0, y: 0, opacity: 1, rotate: 0 }}
+          animate={{ x: p.dx, y: p.dy, opacity: 0, rotate: p.rotate }}
+          transition={{ duration: p.duration, delay: p.delay, ease: "easeOut" }}
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            width: p.w,
+            height: p.h,
+            background: p.color,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* CONFIRMATION MODAL — upload / review / verifying / submitted / error */
 /* ------------------------------------------------------------------ */
 
 const ConfirmationModal = ({ report, darkMode, onClose, onConfirm }) => {
-  const [stage, setStage] = useState("upload");
+  const [stage, setStage] = useState("upload"); // upload | review | verifying | submitted | error
   const [preview, setPreview] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -265,10 +321,18 @@ const ConfirmationModal = ({ report, darkMode, onClose, onConfirm }) => {
     reader.onload = () => setPreview(reader.result);
     reader.readAsDataURL(file);
 
-    setStage("verifying");
     setErrorMsg("");
+    setStage("review");
+  };
 
-    onConfirm(file)
+  const handleRetake = () => {
+    setPreview("");
+    setStage("upload");
+  };
+
+  const handleSubmit = () => {
+    setStage("verifying");
+    onConfirm()
       .then(() => setStage("submitted"))
       .catch((err) => {
         setErrorMsg(err?.message || "Something went wrong verifying that photo. Please try again.");
@@ -336,11 +400,52 @@ const ConfirmationModal = ({ report, darkMode, onClose, onConfirm }) => {
             </motion.div>
           )}
 
+          {stage === "review" && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-6">
+              <p className={`text-sm leading-relaxed ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                Here's the photo you're about to submit. Make sure the issue is clearly visible before sending it for AI verification.
+              </p>
+
+              {preview && (
+                <div
+                  className={`mt-5 h-56 overflow-hidden border flex items-center justify-center ${
+                    darkMode ? "border-white/10 bg-white/[0.02]" : "border-gray-200 bg-[#FAFAFA]"
+                  }`}
+                >
+                  <img src={preview} alt="Photo to submit" className="max-w-full max-h-full w-auto h-auto object-contain" />
+                </div>
+              )}
+
+              <div className="mt-5 flex items-center gap-3">
+                <button
+                  onClick={handleRetake}
+                  aria-label="Change photo"
+                  className={`h-12 shrink-0 px-4 flex items-center justify-center gap-2 text-sm font-semibold border transition-colors ${
+                    darkMode ? "border-white/10 text-gray-300 hover:bg-white/[0.04]" : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <FiRefreshCw size={14} />
+                  <span className="hidden xs:inline">Change</span>
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  className="h-12 flex-1 bg-primary text-white font-bold hover:bg-primary-dark transition-colors"
+                >
+                  Submit
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {stage === "verifying" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-6 flex flex-col items-center text-center py-4">
               {preview && (
-                <div className="w-full h-40 mb-5 overflow-hidden border border-white/10">
-                  <img src={preview} alt="Uploaded evidence" className="w-full h-full object-cover" />
+                <div
+                  className={`w-full h-48 mb-5 overflow-hidden border flex items-center justify-center ${
+                    darkMode ? "border-white/10 bg-white/[0.02]" : "border-gray-200 bg-[#FAFAFA]"
+                  }`}
+                >
+                  <img src={preview} alt="Uploaded evidence" className="max-w-full max-h-full w-auto h-auto object-contain" />
                 </div>
               )}
 
@@ -376,14 +481,17 @@ const ConfirmationModal = ({ report, darkMode, onClose, onConfirm }) => {
               transition={{ type: "spring", stiffness: 280, damping: 22 }}
               className="mt-6 flex flex-col items-center text-center py-4"
             >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 18 }}
-                className="w-16 h-16 flex items-center justify-center bg-primary text-white text-3xl"
-              >
-                <FiCheckCircle />
-              </motion.div>
+              <div className="relative w-16 h-16">
+                <ConfettiBurst active={stage === "submitted"} />
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 18 }}
+                  className="w-16 h-16 flex items-center justify-center bg-primary text-white text-3xl"
+                >
+                  <FiCheckCircle />
+                </motion.div>
+              </div>
 
               <h4 className={`mt-5 text-xl font-black ${darkMode ? "text-white" : "text-black"}`}>Confirmation Submitted</h4>
               <p className={`mt-2 text-sm max-w-xs leading-relaxed ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
@@ -470,11 +578,15 @@ const FeedList = ({ darkMode, activeCategory, activeSort, search }) => {
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState([]);
   const [activeModalId, setActiveModalId] = useState(null);
+  const [removedIds, setRemovedIds] = useState(() => new Set());
 
   useEffect(() => {
     const t = setTimeout(() => {
       setReports(MOCK_FEED);
       setLoading(false);
+      // Fresh mount (e.g. a page refresh) always starts from MOCK_FEED,
+      // so any report removed locally last session is back by design.
+      setRemovedIds(new Set());
     }, 650);
     return () => clearTimeout(t);
   }, []);
@@ -485,7 +597,13 @@ const FeedList = ({ darkMode, activeCategory, activeSort, search }) => {
     setActiveModalId(id);
   };
 
-  const closeModal = () => setActiveModalId(null);
+  const closeModal = () => {
+    const closingReport = reports.find((r) => r.id === activeModalId);
+    if (closingReport?.confirmedByMe) {
+      setRemovedIds((prev) => new Set(prev).add(closingReport.id));
+    }
+    setActiveModalId(null);
+  };
 
   const handleConfirm = useCallback(
     (id) =>
@@ -512,7 +630,7 @@ const FeedList = ({ darkMode, activeCategory, activeSort, search }) => {
   );
 
   const visible = useMemo(() => {
-    let list = [...reports];
+    let list = reports.filter((r) => !removedIds.has(r.id));
 
     if (activeCategory !== "All") {
       list = list.filter((r) => r.category === activeCategory);
@@ -532,7 +650,7 @@ const FeedList = ({ darkMode, activeCategory, activeSort, search }) => {
     }
 
     return list;
-  }, [reports, activeCategory, activeSort, search]);
+  }, [reports, removedIds, activeCategory, activeSort, search]);
 
   const activeReport = reports.find((r) => r.id === activeModalId);
 
@@ -553,7 +671,7 @@ const FeedList = ({ darkMode, activeCategory, activeSort, search }) => {
                 layout
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.97 }}
+                exit={{ opacity: 0, scale: 0.96, height: 0, marginBottom: 0 }}
                 transition={{ delay: index * 0.05 }}
                 whileHover={{ y: -3 }}
                 className={`group border overflow-hidden transition-all duration-300 ${

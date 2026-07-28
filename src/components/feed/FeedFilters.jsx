@@ -34,11 +34,11 @@ const FeedFilters = ({ darkMode, activeCategory, setActiveCategory, activeSort, 
         {/* SEARCH + SORT ROW */}
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <div
-            className={`flex-1 flex items-center gap-2.5 sm:gap-3 h-12 sm:h-11 px-3.5 border transition-colors duration-150 ${
+            className={`flex-1 flex items-center gap-2.5 sm:gap-3 h-14 sm:h-11 px-3.5 border transition-colors duration-150 ${
               darkMode ? "bg-white/[0.03] border-white/10 focus-within:border-primary/40" : "bg-white border-gray-200 focus-within:border-primary/40"
             }`}
           >
-            <FiSearch className={`shrink-0 ${darkMode ? "text-gray-500" : "text-gray-400"}`} size={16} />
+            <FiSearch className={`shrink-0 ${darkMode ? "text-gray-500" : "text-gray-400"}`} size={17} />
             <input
               type="text"
               value={search}
@@ -46,8 +46,11 @@ const FeedFilters = ({ darkMode, activeCategory, setActiveCategory, activeSort, 
               placeholder="Search title or location..."
               /* text-base (16px) on mobile prevents iOS Safari's
                  auto-zoom-on-focus; sm:text-sm restores the tighter
-                 desktop size once that bug no longer applies. */
-              className={`flex-1 min-w-0 h-full bg-transparent text-base sm:text-sm font-medium sm:font-normal leading-none outline-none ${darkMode ? "text-white placeholder:text-gray-600" : "text-gray-950 placeholder:text-gray-400"}`}
+                 desktop size once that bug no longer applies.
+                 appearance-none strips iOS/Android's native rounded,
+                 shadowed input chrome so it matches the flat design
+                 system instead of fighting it. */
+              className={`flex-1 min-w-0 h-full appearance-none rounded-none bg-transparent text-base sm:text-sm font-medium sm:font-normal leading-none outline-none ${darkMode ? "text-white placeholder:text-gray-600" : "text-gray-950 placeholder:text-gray-400"}`}
             />
           </div>
 
@@ -59,7 +62,7 @@ const FeedFilters = ({ darkMode, activeCategory, setActiveCategory, activeSort, 
             <select
               value={activeSort}
               onChange={(e) => setActiveSort(e.target.value)}
-              className={`w-full sm:w-auto h-12 sm:h-11 pl-3.5 pr-9 border text-[13px] font-semibold outline-none appearance-none ${
+              className={`w-full sm:w-auto h-14 sm:h-11 pl-3.5 pr-9 border text-[13px] font-semibold outline-none appearance-none rounded-none ${
                 darkMode ? "bg-white/[0.03] border-white/10 text-gray-200" : "bg-white border-gray-200 text-gray-700"
               }`}
             >
